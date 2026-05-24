@@ -8,6 +8,11 @@ import EditCartItemModal from "../components/EditCartItemModal"
 import PrintReceipt from "../components/PrintReceipt"
 import { createRoot } from "react-dom/client"
 
+import {
+  saveTransaction,
+  generateInvoiceNumber,
+} from "../utils/transactionStorage"
+
 const products = [
   { id: 1, name: "MILLS Running", stock: 12, price: 549000, category: "Running" },
   { id: 2, name: "Ortuseight Futsal", stock: 8, price: 399000, category: "Futsal" },
@@ -98,7 +103,17 @@ function POSKasir() {
   const totalItems = cart.reduce((total, item) => total + item.qty, 0)
 
   const handleFinishTransaction = (transaction) => {
-    setLastTransaction(transaction)
+    const newTransaction = {
+      ...transaction,
+      id: crypto.randomUUID(),
+      invoiceNumber: generateInvoiceNumber(),
+      date: new Date().toISOString(),
+      status: "Lunas",
+    }
+
+    saveTransaction(newTransaction)
+
+    setLastTransaction(newTransaction)
     setIsCheckoutOpen(false)
     setIsReceiptOpen(true)
     setCart([])
