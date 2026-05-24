@@ -2,36 +2,17 @@ import { useState } from "react"
 import MainLayout from "../layouts/MainLayout"
 import ProductCard from "../components/ProductCard"
 import CartItem from "../components/CartItem"
+import CheckoutModal from "../components/CheckoutModal"
+import ReceiptSuccessModal from "../components/ReceiptSuccessModal"
+import EditCartItemModal from "../components/EditCartItemModal"
+import PrintReceipt from "../components/PrintReceipt"
+import { createRoot } from "react-dom/client"
 
 const products = [
-  {
-    id: 1,
-    name: "MILLS Running",
-    stock: 12,
-    price: 549000,
-    category: "Running",
-  },
-  {
-    id: 2,
-    name: "Ortuseight Futsal",
-    stock: 8,
-    price: 399000,
-    category: "Futsal",
-  },
-  {
-    id: 3,
-    name: "Specs Accelerator",
-    stock: 5,
-    price: 699000,
-    category: "Football",
-  },
-  {
-    id: 4,
-    name: "Kaos Sport RAD",
-    stock: 20,
-    price: 129000,
-    category: "Apparel",
-  },
+  { id: 1, name: "MILLS Running", stock: 12, price: 549000, category: "Running" },
+  { id: 2, name: "Ortuseight Futsal", stock: 8, price: 399000, category: "Futsal" },
+  { id: 3, name: "Specs Accelerator", stock: 5, price: 699000, category: "Football" },
+  { id: 4, name: "Kaos Sport RAD", stock: 20, price: 129000, category: "Apparel" },
 ]
 
 const categories = [
@@ -53,189 +34,477 @@ function POSKasir() {
   const [cart, setCart] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false)
+  const [lastTransaction, setLastTransaction] = useState(null)
+  const [isMember, setIsMember] = useState(false)
+  const [selectedCartItem, setSelectedCartItem] = useState(null)
+
+  const formatRupiah = (number) => {
+    return `Rp ${Number(number || 0).toLocaleString("id-ID")}`
+  }
 
   const addToCart = (product) => {
     const existingItem = cart.find((item) => item.id === product.id)
 
     if (existingItem) {
-      setCart(
-        cart.map((item) =>
-          item.id === product.id
-            ? { ...item, qty: item.qty + 1 }
-            : item
-        )
-      )
-    } else {
-      setCart([...cart, { ...product, qty: 1 }])
+      setSelectedCartItem(existingItem)
+      return
     }
-  }
 
-  const increaseQty = (id) => {
-    setCart(
-      cart.map((item) =>
-        item.id === id ? { ...item, qty: item.qty + 1 } : item
-      )
-    )
-  }
+    const newItem = {
+      ...product,
+      qty: 1,
+      customPrice: product.price,
+      discountPercent: 0,
+      note: "",
+    }
 
-  const decreaseQty = (id) => {
-    setCart(
-      cart
-        .map((item) =>
-          item.id === id ? { ...item, qty: item.qty - 1 } : item
-        )
-        .filter((item) => item.qty > 0)
-    )
+    setCart([...cart, newItem])
+    setSelectedCartItem(newItem)
   }
 
   const removeItem = (id) => {
     setCart(cart.filter((item) => item.id !== id))
   }
 
-  const subtotal = cart.reduce(
-    (total, item) => total + item.price * item.qty,
-    0
-  )
-
-  const formatRupiah = (number) => {
-    return `Rp ${number.toLocaleString("id-ID")}`
+  const saveCartItemEdit = (id, updatedData) => {
+    setCart(
+      cart.map((item) =>
+        item.id === id ? { ...item, ...updatedData } : item
+      )
+    )
   }
 
+  const subtotal = cart.reduce((total, item) => {
+    const customPrice = Number(item.customPrice || 0)
+    const discountPercent = Number(item.discountPercent || 0)
+    const priceAfterDiscount =
+      customPrice - (customPrice * discountPercent) / 100
+
+    return total + priceAfterDiscount * item.qty
+  }, 0)
+
+  const totalDiscount = cart.reduce((total, item) => {
+    const customPrice = Number(item.customPrice || 0)
+    const discountPercent = Number(item.discountPercent || 0)
+    const discountValue = ((customPrice * discountPercent) / 100) * item.qty
+
+    return total + discountValue
+  }, 0)
+
+  const memberDiscount = isMember && subtotal >= 300000 ? subtotal * 0.05 : 0
+  const grandTotal = subtotal - memberDiscount
+  const totalItems = cart.reduce((total, item) => total + item.qty, 0)
+
+  const handleFinishTransaction = (transaction) => {
+    setLastTransaction(transaction)
+    setIsCheckoutOpen(false)
+    setIsReceiptOpen(true)
+    setCart([])
+    setIsMember(false)
+  }
+
+  const handlePrintReceipt = () => {
+  if (!lastTransaction) return
+
+  const printWindow = window.open("", "_blank", "width=360,height=640")
+
+  if (!printWindow) {
+    alert("Popup print diblokir browser. Izinkan popup dulu ya.")
+    return
+  }
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Cetak Struk</title>
+        <style>
+          @page {
+            size: 58mm auto;
+            margin: 0;
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+
+          html,
+          body {
+            width: 58mm;
+            margin: 0;
+            padding: 0;
+            background: #fff;
+            color: #000;
+            font-family: Arial, Helvetica, sans-serif;
+          }
+
+          #print-root {
+            width: 58mm;
+            max-width: 58mm;
+            margin: 0;
+            padding: 6px 5px;
+          }
+
+          .print-receipt {
+            width: 100%;
+            max-width: 100%;
+            font-size: 10px;
+            line-height: 1.28;
+          }
+
+          .receipt-header {
+            text-align: center;
+          }
+
+          .receipt-logo {
+            margin-bottom: 3px;
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: 1px;
+          }
+
+          .receipt-header h2 {
+            margin: 0;
+            font-size: 12px;
+            font-weight: 900;
+            line-height: 1.2;
+          }
+
+          .receipt-header p {
+            margin: 1px 0;
+            font-size: 9.5px;
+            line-height: 1.25;
+          }
+
+          .line {
+            width: 100%;
+            margin: 6px 0;
+            border-top: 1px dashed #000;
+          }
+
+          .receipt-info {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 6px;
+            font-size: 10px;
+          }
+
+          .receipt-info p {
+            margin: 1px 0;
+          }
+
+          .right {
+            text-align: right;
+            white-space: nowrap;
+          }
+
+          .receipt-items {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+          }
+
+          .receipt-item p {
+            margin: 0;
+          }
+
+          .item-name {
+            font-size: 10.5px;
+            font-weight: 900;
+            line-height: 1.25;
+            text-transform: uppercase;
+            word-break: break-word;
+          }
+
+          .row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 6px;
+            align-items: start;
+          }
+
+          .row span:first-child {
+            min-width: 0;
+            word-break: break-word;
+          }
+
+          .row span:last-child {
+            text-align: right;
+            white-space: nowrap;
+          }
+
+          .small {
+            font-size: 9.5px;
+          }
+
+          .note {
+            margin-top: 2px !important;
+            font-size: 9.5px;
+            font-style: italic;
+          }
+
+          .summary,
+          .payment {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+          }
+
+          .total {
+            margin-bottom: 3px;
+            font-size: 12.5px;
+            font-weight: 900;
+          }
+
+          .receipt-footer {
+            text-align: center;
+          }
+
+          .receipt-footer p {
+            margin: 2px 0;
+            font-size: 10px;
+          }
+
+          @media print {
+            html,
+            body {
+              width: 58mm;
+              margin: 0;
+              padding: 0;
+            }
+
+            #print-root {
+              width: 58mm;
+              max-width: 58mm;
+              padding: 6px 5px;
+            }
+          }
+        </style>
+      </head>
+
+      <body>
+        <div id="print-root"></div>
+      </body>
+    </html>
+  `)
+
+  printWindow.document.close()
+
+  const rootElement = printWindow.document.getElementById("print-root")
+  const root = createRoot(rootElement)
+
+  root.render(<PrintReceipt transaction={lastTransaction} />)
+
+  setTimeout(() => {
+    printWindow.focus()
+    printWindow.print()
+  }, 500)
+}
+
   const filteredProducts = products.filter((product) => {
-  const matchSearch =
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchSearch =
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchTerm.toLowerCase())
 
-  const matchCategory =
-    selectedCategory === "All" ||
-    product.category === selectedCategory
+    const matchCategory =
+      selectedCategory === "All" || product.category === selectedCategory
 
-  return matchSearch && matchCategory
+    return matchSearch && matchCategory
   })
 
   return (
     <MainLayout>
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-blue-600 mb-1">
+          <p className="mb-1 text-sm font-medium text-blue-600">
             RAD Sport POS
           </p>
-
           <h1 className="text-3xl font-bold">POS / Kasir</h1>
-
-          <p className="text-slate-500 mt-1">
+          <p className="mt-1 text-slate-500">
             Proses transaksi penjualan toko.
           </p>
         </div>
 
-        <button className="bg-blue-600 text-white px-5 py-3 rounded-2xl font-semibold hover:bg-blue-700 transition">
+        <button className="rounded-2xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700">
           Scan Barcode
         </button>
       </div>
 
       <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+        <div className="col-span-2 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-5">
             <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Cari produk atau scan barcode..."
-                className="w-full bg-slate-100 border border-slate-200 rounded-2xl px-5 py-4 outline-none text-sm"
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Cari produk atau scan barcode..."
+              className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-5 py-4 text-sm outline-none"
             />
           </div>
 
-          <div className="flex items-center gap-3 mb-5 overflow-x-auto">
+          <div className="mb-5 flex items-center gap-3 overflow-x-auto">
             {categories.map((category) => {
-                const isActive = selectedCategory === category
+              const isActive = selectedCategory === category
 
-                return (
+              return (
                 <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`px-4 py-2 rounded-2xl text-sm font-medium whitespace-nowrap transition ${
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`whitespace-nowrap rounded-2xl px-4 py-2 text-sm font-medium transition ${
                     isActive
-                        ? "bg-blue-600 text-white"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
                 >
-                    {category}
+                  {category}
                 </button>
-                )
+              )
             })}
           </div>
 
           <div className="min-h-[520px] overflow-y-auto rounded-3xl">
             {filteredProducts.length === 0 ? (
-                <div className="h-[400px] flex items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-3xl">
+              <div className="flex h-[400px] items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 text-slate-400">
                 Produk tidak ditemukan
-                </div>
+              </div>
             ) : (
-                <div className="grid grid-cols-3 gap-5">
+              <div className="grid grid-cols-3 gap-5">
                 {filteredProducts.map((product) => (
-                    <ProductCard
+                  <ProductCard
                     key={product.id}
                     product={product}
                     onAddToCart={addToCart}
-                    />
-                ))}
-                </div>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
-          <div className="mb-5">
-            <h3 className="text-xl font-bold">Keranjang</h3>
-            <p className="text-sm text-slate-400">
-              {cart.length === 0
-                ? "Belum ada produk dipilih"
-                : `${cart.length} produk dipilih`}
-            </p>
-          </div>
-
-          <div className="h-[350px] overflow-y-auto mb-5">
-            {cart.length === 0 ? (
-              <div className="h-full border-2 border-dashed border-slate-200 rounded-3xl flex items-center justify-center text-slate-400">
-                Cart masih kosong
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {cart.map((item) => (
-                  <CartItem
-                    key={item.id}
-                    item={item}
-                    onIncrease={increaseQty}
-                    onDecrease={decreaseQty}
-                    onRemove={removeItem}
                   />
                 ))}
               </div>
             )}
           </div>
+        </div>
 
-          <div className="border-t border-slate-200 pt-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-slate-500">Subtotal</span>
-              <span className="font-semibold">{formatRupiah(subtotal)}</span>
+        <div className="sticky top-6 h-[calc(100vh-80px)] rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex h-full flex-col">
+            <div className="mb-5 flex items-start justify-between">
+              <div>
+                <h3 className="text-xl font-bold">Keranjang</h3>
+                <p className="text-sm text-slate-400">
+                  {cart.length === 0
+                    ? "Belum ada produk dipilih"
+                    : `${cart.length} jenis produk • ${totalItems} item`}
+                </p>
+              </div>
+
+              {cart.length > 0 && (
+                <button
+                  onClick={() => setCart([])}
+                  className="text-xs font-semibold text-red-500 hover:text-red-600"
+                >
+                  Clear
+                </button>
+              )}
             </div>
 
-            <div className="flex items-center justify-between mb-5">
-              <span className="text-slate-500">Total</span>
-              <span className="text-3xl font-bold text-blue-600">
-                {formatRupiah(subtotal)}
-              </span>
+            <div className="mb-3 flex-1 overflow-y-auto pr-1">
+              {cart.length === 0 ? (
+                <div className="flex h-full items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 text-slate-400">
+                  Cart masih kosong
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {cart.map((item) => (
+                    <CartItem
+                      key={item.id}
+                      item={item}
+                      onRemove={removeItem}
+                      onEdit={setSelectedCartItem}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
-            <button
-              disabled={cart.length === 0}
-              className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition disabled:bg-slate-300 disabled:cursor-not-allowed"
-            >
-              Checkout
-            </button>
+            <div className="border-t border-slate-200 bg-white pt-3">
+              <div className="mb-3 flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-2.5">
+                <div>
+                  <p className="text-sm font-bold text-slate-700">Member</p>
+                  <p className="text-xs text-slate-400">5% min. Rp 300.000</p>
+                </div>
+
+                <input
+                  type="checkbox"
+                  checked={isMember}
+                  onChange={(e) => setIsMember(e.target.checked)}
+                  className="h-5 w-5"
+                />
+              </div>
+
+              <div className="space-y-1.5 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Subtotal Net</span>
+                  <span className="font-bold">{formatRupiah(subtotal)}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Diskon Reguler</span>
+                  <span className="font-bold text-emerald-600">
+                    - {formatRupiah(totalDiscount)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Diskon Member</span>
+                  <span className="font-bold text-emerald-600">
+                    - {formatRupiah(memberDiscount)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="my-3 border-t border-slate-200" />
+
+              <div className="mb-3 flex items-end justify-between">
+                <span className="text-sm font-bold text-slate-500">Total Akhir</span>
+                <span className="text-3xl font-black leading-none text-blue-600">
+                  {formatRupiah(grandTotal)}
+                </span>
+              </div>
+
+              <button
+                onClick={() => setIsCheckoutOpen(true)}
+                disabled={cart.length === 0}
+                className="w-full rounded-2xl bg-blue-600 py-3.5 font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                Checkout
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        cartItems={cart}
+        total={grandTotal}
+        totalDiscount={totalDiscount}
+        memberDiscount={memberDiscount}
+        isMember={isMember}
+        onFinishTransaction={handleFinishTransaction}
+      />
+
+      <ReceiptSuccessModal
+        isOpen={isReceiptOpen}
+        onClose={() => setIsReceiptOpen(false)}
+        transaction={lastTransaction}
+        onPrintReceipt={handlePrintReceipt}
+      />
+
+      <EditCartItemModal
+        isOpen={!!selectedCartItem}
+        onClose={() => setSelectedCartItem(null)}
+        item={selectedCartItem}
+        onSave={saveCartItemEdit}
+      />
     </MainLayout>
   )
 }
