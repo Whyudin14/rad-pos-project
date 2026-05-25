@@ -21,6 +21,7 @@ export const products = [
         barcode: "8991000000012",
         value: "39",
         stock: 1,
+        minimumStock: 1,
         price: 549000,
       },
       {
@@ -29,6 +30,7 @@ export const products = [
         barcode: "8991000000013",
         value: "40",
         stock: 3,
+        minimumStock: 2,
         price: 549000,
       },
       {
@@ -37,6 +39,7 @@ export const products = [
         barcode: "8991000000014",
         value: "41",
         stock: 2,
+        minimumStock: 2,
         price: 549000,
       },
       {
@@ -45,6 +48,7 @@ export const products = [
         barcode: "8991000000015",
         value: "42",
         stock: 4,
+        minimumStock: 2,
         price: 549000,
       },
       {
@@ -53,6 +57,7 @@ export const products = [
         barcode: "8991000000016",
         value: "43",
         stock: 2,
+        minimumStock: 2,
         price: 549000,
       },
       {
@@ -61,6 +66,7 @@ export const products = [
         barcode: "8991000000017",
         value: "44",
         stock: 0,
+        minimumStock: 1,
         price: 549000,
       },
     ],
@@ -87,6 +93,7 @@ export const products = [
         barcode: "8991000000022",
         value: "39",
         stock: 1,
+        minimumStock: 1,
         price: 399000,
       },
       {
@@ -95,6 +102,7 @@ export const products = [
         barcode: "8991000000023",
         value: "40",
         stock: 2,
+        minimumStock: 2,
         price: 399000,
       },
       {
@@ -103,6 +111,7 @@ export const products = [
         barcode: "8991000000024",
         value: "41",
         stock: 0,
+        minimumStock: 2,
         price: 399000,
       },
       {
@@ -111,6 +120,7 @@ export const products = [
         barcode: "8991000000025",
         value: "42",
         stock: 3,
+        minimumStock: 2,
         price: 399000,
       },
       {
@@ -119,6 +129,7 @@ export const products = [
         barcode: "8991000000026",
         value: "43",
         stock: 2,
+        minimumStock: 1,
         price: 399000,
       },
     ],
@@ -145,6 +156,7 @@ export const products = [
         barcode: "8991000000032",
         value: "40",
         stock: 1,
+        minimumStock: 1,
         price: 699000,
       },
       {
@@ -153,6 +165,7 @@ export const products = [
         barcode: "8991000000033",
         value: "41",
         stock: 0,
+        minimumStock: 2,
         price: 699000,
       },
       {
@@ -161,6 +174,7 @@ export const products = [
         barcode: "8991000000034",
         value: "42",
         stock: 2,
+        minimumStock: 2,
         price: 699000,
       },
       {
@@ -169,6 +183,7 @@ export const products = [
         barcode: "8991000000035",
         value: "43",
         stock: 1,
+        minimumStock: 1,
         price: 699000,
       },
       {
@@ -177,6 +192,7 @@ export const products = [
         barcode: "8991000000036",
         value: "44",
         stock: 1,
+        minimumStock: 1,
         price: 699000,
       },
     ],
@@ -203,6 +219,7 @@ export const products = [
         barcode: "8991000000042",
         value: "S",
         stock: 4,
+        minimumStock: 2,
         price: 129000,
       },
       {
@@ -211,6 +228,7 @@ export const products = [
         barcode: "8991000000043",
         value: "M",
         stock: 6,
+        minimumStock: 3,
         price: 129000,
       },
       {
@@ -219,6 +237,7 @@ export const products = [
         barcode: "8991000000044",
         value: "L",
         stock: 5,
+        minimumStock: 3,
         price: 129000,
       },
       {
@@ -227,6 +246,7 @@ export const products = [
         barcode: "8991000000045",
         value: "XL",
         stock: 3,
+        minimumStock: 2,
         price: 129000,
       },
       {
@@ -235,6 +255,7 @@ export const products = [
         barcode: "8991000000046",
         value: "XXL",
         stock: 2,
+        minimumStock: 1,
         price: 129000,
       },
     ],
