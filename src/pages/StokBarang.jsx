@@ -22,8 +22,15 @@ function StokBarang() {
     }, 0)
   }
 
-  const getStockStatus = (stock) => {
-    if (stock <= 0) {
+  const getMinimumStock = (product) => {
+    return Number(product.minimumStock || 0)
+  }
+
+  const getStockStatus = (stock, minimumStock = 0) => {
+    const numericStock = Number(stock || 0)
+    const numericMinimumStock = Number(minimumStock || 0)
+
+    if (numericStock <= 0) {
       return {
         label: "Kosong",
         badgeClass: "bg-red-50 text-red-600 border-red-100",
@@ -31,7 +38,7 @@ function StokBarang() {
       }
     }
 
-    if (stock <= 3) {
+    if (numericMinimumStock > 0 && numericStock <= numericMinimumStock) {
       return {
         label: "Menipis",
         badgeClass: "bg-amber-50 text-amber-600 border-amber-100",
@@ -46,6 +53,14 @@ function StokBarang() {
     }
   }
 
+  const getVariantMinimumStock = (product, variant) => {
+    if (variant?.minimumStock !== undefined) {
+      return Number(variant.minimumStock || 0)
+    }
+
+    return getMinimumStock(product)
+  }
+
   const totalProducts = products.length
 
   const totalVariants = products.reduce((total, product) => {
@@ -58,20 +73,26 @@ function StokBarang() {
 
   const totalNeedCheck = products.filter((product) => {
     const stock = getTotalStock(product)
-    return stock <= 3
+    const minimumStock = getMinimumStock(product)
+    const status = getStockStatus(stock, minimumStock)
+
+    return status.label === "Menipis" || status.label === "Kosong"
   }).length
 
   const filteredProducts = products.filter((product) => {
     const keyword = searchTerm.toLowerCase()
     const productStock = getTotalStock(product)
-    const stockStatus = getStockStatus(productStock)
+    const minimumStock = getMinimumStock(product)
+    const stockStatus = getStockStatus(productStock, minimumStock)
 
     const matchProduct =
       product.name?.toLowerCase().includes(keyword) ||
       product.brand?.toLowerCase().includes(keyword) ||
       product.category?.toLowerCase().includes(keyword) ||
       product.sku?.toLowerCase().includes(keyword) ||
-      product.barcode?.includes(searchTerm)
+      product.barcode?.includes(searchTerm) ||
+      product.rackLocation?.toLowerCase().includes(keyword) ||
+      product.description?.toLowerCase().includes(keyword)
 
     const matchVariant = product.variants?.some((variant) => {
       return (
@@ -109,7 +130,7 @@ function StokBarang() {
             </h1>
 
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              Cek stok produk, ukuran, SKU, dan barcode dengan cepat.
+              Cek stok produk, ukuran, SKU, barcode, dan lokasi rak dengan cepat.
             </p>
           </div>
 
@@ -175,7 +196,7 @@ function StokBarang() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Cari nama barang, SKU, barcode, ukuran..."
+              placeholder="Cari nama barang, SKU, barcode, ukuran, rak..."
               className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 xl:max-w-lg"
             />
           </div>
@@ -219,7 +240,11 @@ function StokBarang() {
                 {filteredProducts.map((product) => {
                   const isExpanded = expandedProductId === product.id
                   const productStock = getTotalStock(product)
-                  const stockStatus = getStockStatus(productStock)
+                  const minimumStock = getMinimumStock(product)
+                  const stockStatus = getStockStatus(
+                    productStock,
+                    minimumStock
+                  )
 
                   return (
                     <div key={product.id} className="bg-white">
@@ -247,6 +272,10 @@ function StokBarang() {
 
                           <p className="mt-0.5 text-xs font-bold text-slate-400">
                             Barcode: {product.barcode || "-"}
+                          </p>
+
+                          <p className="mt-0.5 text-xs font-bold text-slate-400">
+                            Rak: {product.rackLocation || "-"}
                           </p>
                         </div>
 
@@ -286,6 +315,10 @@ function StokBarang() {
                             className={`text-lg font-black ${stockStatus.textClass}`}
                           >
                             {productStock}
+                          </p>
+
+                          <p className="text-xs font-bold text-slate-400">
+                            Min: {minimumStock || "-"}
                           </p>
                         </div>
 
@@ -365,7 +398,7 @@ function StokBarang() {
                                 Stok Minimum
                               </p>
                               <p className="mt-1 text-sm font-black text-slate-900">
-                                {product.minimumStock ?? "-"}
+                                {minimumStock || "-"}
                               </p>
                             </div>
 
@@ -379,6 +412,15 @@ function StokBarang() {
                             </div>
                           </div>
 
+                          <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
+                            <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                              Keterangan
+                            </p>
+                            <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">
+                              {product.description || "-"}
+                            </p>
+                          </div>
+
                           <div className="mb-3">
                             <p className="text-sm font-black text-slate-800">
                               Stok Per {product.variantType || "Varian"}
@@ -389,10 +431,11 @@ function StokBarang() {
                           </div>
 
                           <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-                            <div className="min-w-[720px]">
-                              <div className="grid grid-cols-[0.5fr_0.5fr_1.2fr_1.2fr_0.8fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400">
+                            <div className="min-w-[820px]">
+                              <div className="grid grid-cols-[0.5fr_0.5fr_0.7fr_1.2fr_1.2fr_0.8fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400">
                                 <span>Ukuran</span>
                                 <span>Stok</span>
+                                <span>Status</span>
                                 <span>SKU</span>
                                 <span>Barcode</span>
                                 <span className="text-right">Harga</span>
@@ -401,13 +444,17 @@ function StokBarang() {
                               <div className="divide-y divide-slate-100">
                                 {product.variants?.map((variant) => {
                                   const variantStock = Number(variant.stock || 0)
-                                  const variantStatus =
-                                    getStockStatus(variantStock)
+                                  const variantMinimumStock =
+                                    getVariantMinimumStock(product, variant)
+                                  const variantStatus = getStockStatus(
+                                    variantStock,
+                                    variantMinimumStock
+                                  )
 
                                   return (
                                     <div
                                       key={variant.id || variant.value}
-                                      className="grid grid-cols-[0.5fr_0.5fr_1.2fr_1.2fr_0.8fr] gap-3 px-4 py-3 text-sm font-bold text-slate-700"
+                                      className="grid grid-cols-[0.5fr_0.5fr_0.7fr_1.2fr_1.2fr_0.8fr] gap-3 px-4 py-3 text-sm font-bold text-slate-700"
                                     >
                                       <span className="font-black text-slate-900">
                                         {variant.value}
@@ -417,6 +464,14 @@ function StokBarang() {
                                         className={`font-black ${variantStatus.textClass}`}
                                       >
                                         {variantStock}
+                                      </span>
+
+                                      <span>
+                                        <span
+                                          className={`inline-flex rounded-full border px-2 py-1 text-xs font-black ${variantStatus.badgeClass}`}
+                                        >
+                                          {variantStatus.label}
+                                        </span>
                                       </span>
 
                                       <span className="break-all text-xs text-slate-500">
@@ -438,8 +493,9 @@ function StokBarang() {
                           </div>
 
                           <div className="mt-3 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-bold text-blue-600">
-                            Catatan: detail ini disatukan supaya kasir dan gudang
-                            cukup klik satu tombol saat cek barang.
+                            Catatan: status stok mengikuti stok minimum produk.
+                            Nanti jika minimum stok per ukuran sudah dibuat,
+                            status ukuran bisa dihitung lebih akurat.
                           </div>
                         </div>
                       )}
