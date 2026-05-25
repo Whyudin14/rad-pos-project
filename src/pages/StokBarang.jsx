@@ -5,6 +5,7 @@ import { products } from "../data/dummyProducts"
 function StokBarang() {
   const [searchTerm, setSearchTerm] = useState("")
   const [stockFilter, setStockFilter] = useState("Semua")
+  const [productViewMode, setProductViewMode] = useState("Semua")
   const [expandedProductId, setExpandedProductId] = useState(null)
   const [showComingSoon, setShowComingSoon] = useState(false)
 
@@ -169,6 +170,12 @@ function StokBarang() {
     return stockOpnameTypes.find((item) => item.type === selectedSessionType)
   }
 
+  const isProductMatchActiveSession = (product) => {
+    if (!activeStockOpnameSession) return false
+
+    return activeStockOpnameSession.categories?.includes(product.category)
+  }
+
   const totalProducts = products.length
 
   const totalVariants = products.reduce((total, product) => {
@@ -186,6 +193,10 @@ function StokBarang() {
 
     return status.label === "Menipis" || status.label === "Kosong"
   }).length
+
+  const sessionProductsCount = activeStockOpnameSession
+    ? products.filter((product) => isProductMatchActiveSession(product)).length
+    : 0
 
   const filteredProducts = products.filter((product) => {
     const keyword = searchTerm.toLowerCase()
@@ -213,7 +224,10 @@ function StokBarang() {
     const matchFilter =
       stockFilter === "Semua" || stockStatus.label === stockFilter
 
-    return (matchProduct || matchVariant) && matchFilter
+    const matchSessionMode =
+      productViewMode === "Semua" || isProductMatchActiveSession(product)
+
+    return (matchProduct || matchVariant) && matchFilter && matchSessionMode
   })
 
   const createStockOpnameSession = () => {
@@ -245,6 +259,7 @@ function StokBarang() {
 
     setStockOpnameSessions(updatedSessions)
     setActiveStockOpnameSession(newSession)
+    setProductViewMode("Sesuai Sesi")
     setSelectedSessionType("")
     setSessionNote("")
     setShowCreateSession(false)
@@ -274,6 +289,7 @@ function StokBarang() {
 
     setStockOpnameSessions(updatedSessions)
     setActiveStockOpnameSession(null)
+    setProductViewMode("Semua")
   }
 
   const toggleExpandProduct = (productId) => {
@@ -582,7 +598,9 @@ function StokBarang() {
               onClick={() => setShowCreateSession(true)}
               className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700"
             >
-              {activeStockOpnameSession ? "Ganti / Buat Sesi Baru" : "Buat Sesi SO"}
+              {activeStockOpnameSession
+                ? "Ganti / Buat Sesi Baru"
+                : "Buat Sesi SO"}
             </button>
 
             {activeStockOpnameSession && (
@@ -617,25 +635,74 @@ function StokBarang() {
             />
           </div>
 
-          <div className="mb-4 flex flex-wrap gap-2">
-            {stockFilters.map((filter) => {
-              const isActive = stockFilter === filter
+          <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {stockFilters.map((filter) => {
+                const isActive = stockFilter === filter
 
-              return (
-                <button
-                  key={filter}
-                  onClick={() => setStockFilter(filter)}
-                  className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
-                    isActive
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                  }`}
-                >
-                  {filter}
-                </button>
-              )
-            })}
+                return (
+                  <button
+                    key={filter}
+                    onClick={() => setStockFilter(filter)}
+                    className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
+                      isActive
+                        ? "bg-slate-900 text-white"
+                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setProductViewMode("Semua")}
+                className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
+                  productViewMode === "Semua"
+                    ? "bg-blue-600 text-white"
+                    : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                }`}
+              >
+                Semua Produk
+              </button>
+
+              <button
+                onClick={() => {
+                  if (activeStockOpnameSession) {
+                    setProductViewMode("Sesuai Sesi")
+                  }
+                }}
+                disabled={!activeStockOpnameSession}
+                className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
+                  !activeStockOpnameSession
+                    ? "cursor-not-allowed bg-slate-100 text-slate-300"
+                    : productViewMode === "Sesuai Sesi"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                }`}
+              >
+                Sesuai Sesi Aktif
+              </button>
+            </div>
           </div>
+
+          {productViewMode === "Sesuai Sesi" && activeStockOpnameSession && (
+            <div className="mb-4 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-bold leading-relaxed text-emerald-700">
+              Mode sesuai sesi aktif sedang digunakan. Menampilkan{" "}
+              {sessionProductsCount} produk kategori{" "}
+              {activeStockOpnameSession.categories?.join(", ")} untuk sesi{" "}
+              {activeStockOpnameSession.type}.
+            </div>
+          )}
+
+          {!activeStockOpnameSession && (
+            <div className="mb-4 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold leading-relaxed text-slate-500">
+              Buat sesi SO aktif untuk mengaktifkan mode filter produk sesuai
+              jadwal SO mingguan.
+            </div>
+          )}
 
           {filteredProducts.length === 0 ? (
             <div className="flex h-64 items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 text-sm font-bold text-slate-400">
