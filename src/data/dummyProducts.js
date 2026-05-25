@@ -6,10 +6,13 @@ export const products = [
     name: "MILLS Running",
     brand: "MILLS",
     stock: 12,
+    minimumStock: 3,
     price: 549000,
     category: "Running",
     status: "active",
     image: "/images/products/mills-running.png",
+    rackLocation: "Rak Running A1",
+    description: "Sepatu running dewasa dari MILLS untuk kebutuhan olahraga harian.",
     variantType: "Ukuran",
     variants: [
       {
@@ -69,10 +72,13 @@ export const products = [
     name: "Ortuseight Futsal",
     brand: "Ortuseight",
     stock: 8,
+    minimumStock: 3,
     price: 399000,
     category: "Futsal",
     status: "active",
     image: "/images/products/ortuseight-futsal.png",
+    rackLocation: "Rak Futsal B1",
+    description: "Sepatu futsal Ortuseight untuk pemakaian lapangan indoor.",
     variantType: "Ukuran",
     variants: [
       {
@@ -124,10 +130,13 @@ export const products = [
     name: "Specs Accelerator",
     brand: "Specs",
     stock: 5,
+    minimumStock: 3,
     price: 699000,
     category: "Football",
     status: "active",
     image: "/images/products/specs-accelerator.png",
+    rackLocation: "Rak Football C1",
+    description: "Sepatu bola Specs untuk kebutuhan latihan dan pertandingan.",
     variantType: "Ukuran",
     variants: [
       {
@@ -179,10 +188,13 @@ export const products = [
     name: "Kaos Sport RAD",
     brand: "RAD Sport",
     stock: 20,
+    minimumStock: 5,
     price: 129000,
     category: "Apparel",
     status: "active",
     image: "/images/products/kaos-sport-rad.png",
+    rackLocation: "Rak Apparel D1",
+    description: "Kaos sport RAD untuk olahraga dan aktivitas harian.",
     variantType: "Ukuran",
     variants: [
       {
