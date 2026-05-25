@@ -8,6 +8,11 @@ function StokBarang() {
   const [expandedProductId, setExpandedProductId] = useState(null)
   const [showComingSoon, setShowComingSoon] = useState(false)
 
+  const [selectedStockOpname, setSelectedStockOpname] = useState(null)
+  const [physicalStock, setPhysicalStock] = useState("")
+  const [opnameNote, setOpnameNote] = useState("")
+  const [showOpnameSuccess, setShowOpnameSuccess] = useState(false)
+
   const formatRupiah = (number) => {
     return `Rp ${Number(number || 0).toLocaleString("id-ID")}`
   }
@@ -114,7 +119,90 @@ function StokBarang() {
     )
   }
 
+  const openStockOpnameModal = (product, variant) => {
+    setSelectedStockOpname({
+      productId: product.id,
+      productName: product.name,
+      brand: product.brand,
+      category: product.category,
+      rackLocation: product.rackLocation,
+      variantId: variant.id,
+      variantValue: variant.value,
+      sku: variant.sku,
+      barcode: variant.barcode,
+      systemStock: Number(variant.stock || 0),
+    })
+
+    setPhysicalStock("")
+    setOpnameNote("")
+    setShowOpnameSuccess(false)
+  }
+
+  const closeStockOpnameModal = () => {
+    setSelectedStockOpname(null)
+    setPhysicalStock("")
+    setOpnameNote("")
+    setShowOpnameSuccess(false)
+  }
+
+  const saveStockOpname = () => {
+    if (!selectedStockOpname) return
+
+    const numericPhysicalStock = Number(physicalStock)
+
+    if (physicalStock === "" || Number.isNaN(numericPhysicalStock)) {
+      return
+    }
+
+    const difference =
+      numericPhysicalStock - Number(selectedStockOpname.systemStock || 0)
+
+    const opnameData = {
+      id: `SO-${Date.now()}`,
+      date: new Date().toISOString(),
+      productId: selectedStockOpname.productId,
+      productName: selectedStockOpname.productName,
+      brand: selectedStockOpname.brand,
+      category: selectedStockOpname.category,
+      rackLocation: selectedStockOpname.rackLocation,
+      variantId: selectedStockOpname.variantId,
+      variantValue: selectedStockOpname.variantValue,
+      sku: selectedStockOpname.sku,
+      barcode: selectedStockOpname.barcode,
+      systemStock: Number(selectedStockOpname.systemStock || 0),
+      physicalStock: numericPhysicalStock,
+      difference,
+      note: opnameNote,
+      status:
+        difference === 0
+          ? "Sesuai"
+          : difference > 0
+          ? "Lebih"
+          : "Kurang",
+    }
+
+    const existingHistory = JSON.parse(
+      localStorage.getItem("stockOpnameHistory") || "[]"
+    )
+
+    localStorage.setItem(
+      "stockOpnameHistory",
+      JSON.stringify([opnameData, ...existingHistory])
+    )
+
+    setShowOpnameSuccess(true)
+
+    setTimeout(() => {
+      closeStockOpnameModal()
+    }, 900)
+  }
+
   const stockFilters = ["Semua", "Aman", "Menipis", "Kosong"]
+
+  const selectedSystemStock = Number(selectedStockOpname?.systemStock || 0)
+  const selectedPhysicalStock = Number(physicalStock || 0)
+  const selectedDifference =
+    physicalStock === "" ? 0 : selectedPhysicalStock - selectedSystemStock
 
   return (
     <MainLayout>
@@ -426,19 +514,21 @@ function StokBarang() {
                               Stok Per {product.variantType || "Varian"}
                             </p>
                             <p className="text-xs font-semibold text-slate-400">
-                              Fokus utama tabel ini adalah stok fisik per ukuran untuk membantu proses stok opname.
+                              Fokus utama tabel ini adalah stok fisik per ukuran
+                              untuk membantu proses stok opname.
                             </p>
                           </div>
 
                           <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-                            <div className="min-w-[820px]">
-                              <div className="grid grid-cols-[0.5fr_0.5fr_0.7fr_1.2fr_1.2fr_0.8fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400">
+                            <div className="min-w-[900px]">
+                              <div className="grid grid-cols-[0.45fr_0.45fr_0.65fr_1.15fr_1.15fr_0.75fr_0.45fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400">
                                 <span>Ukuran</span>
                                 <span>Stok</span>
                                 <span>Status</span>
                                 <span>SKU</span>
                                 <span>Barcode</span>
                                 <span className="text-right">Harga</span>
+                                <span className="text-right">Aksi</span>
                               </div>
 
                               <div className="divide-y divide-slate-100">
@@ -454,7 +544,7 @@ function StokBarang() {
                                   return (
                                     <div
                                       key={variant.id || variant.value}
-                                      className="grid grid-cols-[0.5fr_0.5fr_0.7fr_1.2fr_1.2fr_0.8fr] gap-3 px-4 py-3 text-sm font-bold text-slate-700"
+                                      className="grid grid-cols-[0.45fr_0.45fr_0.65fr_1.15fr_1.15fr_0.75fr_0.45fr] gap-3 px-4 py-3 text-sm font-bold text-slate-700"
                                     >
                                       <span className="font-black text-slate-900">
                                         {variant.value}
@@ -485,6 +575,17 @@ function StokBarang() {
                                       <span className="text-right text-xs font-black text-slate-900">
                                         {formatRupiah(variant.price)}
                                       </span>
+
+                                      <span className="text-right">
+                                        <button
+                                          onClick={() =>
+                                            openStockOpnameModal(product, variant)
+                                          }
+                                          className="rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-black text-white transition hover:bg-slate-700"
+                                        >
+                                          SO
+                                        </button>
+                                      </span>
                                     </div>
                                   )
                                 })}
@@ -507,6 +608,166 @@ function StokBarang() {
             </div>
           )}
         </div>
+
+        {selectedStockOpname && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-wide text-blue-600">
+                    Stok Opname
+                  </p>
+
+                  <h3 className="mt-1 text-2xl font-black text-slate-900">
+                    Cek Stok Fisik
+                  </h3>
+
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Input stok fisik sesuai hasil hitung barang di rak dan gudang.
+                  </p>
+                </div>
+
+                <button
+                  onClick={closeStockOpnameModal}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-lg font-black text-slate-900">
+                  {selectedStockOpname.productName}
+                </p>
+
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                      Ukuran
+                    </p>
+                    <p className="mt-1 text-sm font-black text-slate-900">
+                      {selectedStockOpname.variantValue}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                      Letak Rak
+                    </p>
+                    <p className="mt-1 text-sm font-black text-slate-900">
+                      {selectedStockOpname.rackLocation || "-"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                      SKU
+                    </p>
+                    <p className="mt-1 break-all text-sm font-black text-slate-900">
+                      {selectedStockOpname.sku || "-"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                      Barcode
+                    </p>
+                    <p className="mt-1 break-all text-sm font-black text-slate-900">
+                      {selectedStockOpname.barcode || "-"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-4 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                    Stok Sistem
+                  </p>
+                  <p className="mt-1 text-2xl font-black text-slate-900">
+                    {selectedSystemStock}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                    Stok Fisik
+                  </p>
+                  <input
+                    type="number"
+                    min="0"
+                    value={physicalStock}
+                    onChange={(e) => setPhysicalStock(e.target.value)}
+                    placeholder="0"
+                    className="mt-1 w-full text-2xl font-black text-slate-900 outline-none placeholder:text-slate-300"
+                  />
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                    Selisih
+                  </p>
+                  <p
+                    className={`mt-1 text-2xl font-black ${
+                      physicalStock === ""
+                        ? "text-slate-300"
+                        : selectedDifference === 0
+                        ? "text-emerald-600"
+                        : selectedDifference > 0
+                        ? "text-blue-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {physicalStock === ""
+                      ? "-"
+                      : selectedDifference > 0
+                      ? `+${selectedDifference}`
+                      : selectedDifference}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-5">
+                <label className="text-xs font-black uppercase tracking-wide text-slate-400">
+                  Catatan
+                </label>
+                <textarea
+                  value={opnameNote}
+                  onChange={(e) => setOpnameNote(e.target.value)}
+                  placeholder="Contoh: barang ada di display, dus belum dicek, selisih karena retur, dll."
+                  className="mt-2 min-h-24 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                />
+              </div>
+
+              {showOpnameSuccess && (
+                <div className="mb-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-600">
+                  Data stok opname berhasil disimpan.
+                </div>
+              )}
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  onClick={closeStockOpnameModal}
+                  className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-200"
+                >
+                  Batal
+                </button>
+
+                <button
+                  onClick={saveStockOpname}
+                  disabled={physicalStock === ""}
+                  className={`rounded-2xl px-5 py-3 text-sm font-black text-white transition ${
+                    physicalStock === ""
+                      ? "cursor-not-allowed bg-slate-300"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
+                >
+                  Simpan SO
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showComingSoon && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
