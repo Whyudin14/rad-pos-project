@@ -15,6 +15,7 @@ function StokBarang() {
 
   const [showOpnameHistory, setShowOpnameHistory] = useState(false)
   const [stockOpnameHistory, setStockOpnameHistory] = useState([])
+  const [opnameHistoryFilter, setOpnameHistoryFilter] = useState("Semua")
 
   useEffect(() => {
     const storedHistory = JSON.parse(
@@ -255,6 +256,26 @@ function StokBarang() {
   const selectedPhysicalStock = Number(physicalStock || 0)
   const selectedDifference =
     physicalStock === "" ? 0 : selectedPhysicalStock - selectedSystemStock
+
+  const opnameHistoryFilters = ["Semua", "Sesuai", "Lebih", "Kurang"]
+
+  const filteredStockOpnameHistory = stockOpnameHistory.filter((item) => {
+    return opnameHistoryFilter === "Semua" || item.status === opnameHistoryFilter
+  })
+
+  const totalOpnameHistory = stockOpnameHistory.length
+
+  const totalOpnameSesuai = stockOpnameHistory.filter((item) => {
+    return item.status === "Sesuai"
+  }).length
+
+  const totalOpnameLebih = stockOpnameHistory.filter((item) => {
+    return item.status === "Lebih"
+  }).length
+
+  const totalOpnameKurang = stockOpnameHistory.filter((item) => {
+    return item.status === "Kurang"
+  }).length
 
   return (
     <MainLayout>
@@ -835,7 +856,7 @@ function StokBarang() {
 
         {showOpnameHistory && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="flex max-h-[90vh] w-full max-w-6xl flex-col rounded-3xl bg-white p-6 shadow-2xl">
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-black uppercase tracking-wide text-blue-600">
@@ -859,9 +880,71 @@ function StokBarang() {
                 </button>
               </div>
 
+              <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                    Total SO
+                  </p>
+                  <p className="mt-1 text-2xl font-black text-slate-900">
+                    {totalOpnameHistory}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                  <p className="text-xs font-black uppercase tracking-wide text-emerald-500">
+                    Sesuai
+                  </p>
+                  <p className="mt-1 text-2xl font-black text-emerald-600">
+                    {totalOpnameSesuai}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                  <p className="text-xs font-black uppercase tracking-wide text-blue-500">
+                    Lebih
+                  </p>
+                  <p className="mt-1 text-2xl font-black text-blue-600">
+                    {totalOpnameLebih}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-red-100 bg-red-50 p-4">
+                  <p className="text-xs font-black uppercase tracking-wide text-red-500">
+                    Kurang
+                  </p>
+                  <p className="mt-1 text-2xl font-black text-red-600">
+                    {totalOpnameKurang}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-4 flex flex-wrap gap-2">
+                {opnameHistoryFilters.map((filter) => {
+                  const isActive = opnameHistoryFilter === filter
+
+                  return (
+                    <button
+                      key={filter}
+                      onClick={() => setOpnameHistoryFilter(filter)}
+                      className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
+                        isActive
+                          ? "bg-slate-900 text-white"
+                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                      }`}
+                    >
+                      {filter}
+                    </button>
+                  )
+                })}
+              </div>
+
               {stockOpnameHistory.length === 0 ? (
                 <div className="flex h-64 items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 text-sm font-bold text-slate-400">
                   Belum ada riwayat stok opname
+                </div>
+              ) : filteredStockOpnameHistory.length === 0 ? (
+                <div className="flex h-64 items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 text-sm font-bold text-slate-400">
+                  Tidak ada riwayat dengan status {opnameHistoryFilter}
                 </div>
               ) : (
                 <div className="overflow-auto rounded-2xl border border-slate-200">
@@ -878,7 +961,7 @@ function StokBarang() {
                     </div>
 
                     <div className="divide-y divide-slate-100">
-                      {stockOpnameHistory.map((item) => {
+                      {filteredStockOpnameHistory.map((item) => {
                         return (
                           <div
                             key={item.id}
