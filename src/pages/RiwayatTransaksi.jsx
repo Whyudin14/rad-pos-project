@@ -212,7 +212,13 @@ function RiwayatTransaksi() {
                               {item.name}
                             </p>
 
-                            <p className="text-xs text-slate-500">
+                            {item.variantValue && (
+                              <p className="mt-0.5 text-xs font-semibold text-blue-600">
+                                {item.variantType || "Varian"}: {item.variantValue}
+                              </p>
+                            )}
+
+                            <p className="mt-1 text-xs text-slate-500">
                               {qty} x {formatRupiah(price)}
                             </p>
 

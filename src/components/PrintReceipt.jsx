@@ -104,6 +104,12 @@ function PrintReceipt({ transaction }) {
                 {index + 1}. {item.name}
               </p>
 
+              {item.variantValue && (
+                <p className="small">
+                  {item.variantType || "Varian"}: {item.variantValue}
+                </p>
+              )}
+
               <div className="row">
                 <span>
                   {qty} x {formatRupiah(price)}

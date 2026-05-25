@@ -3,12 +3,24 @@ function CartItem({ item, onRemove, onEdit }) {
     return `Rp ${Number(number || 0).toLocaleString("id-ID")}`
   }
 
-  const customPrice = Number(item.customPrice || 0)
-  const discountPercent = Number(item.discountPercent || 0)
+  const customPrice = Number(item.customPrice || item.price || 0)
+  const discountPercent = Number(item.discountPercent || item.discount || 0)
+  const qty = Number(item.qty || 0)
+
   const priceAfterDiscount =
     customPrice - (customPrice * discountPercent) / 100
 
-  const itemTotal = priceAfterDiscount * item.qty
+  const itemTotal = priceAfterDiscount * qty
+
+  const variantLabel =
+    item.variantType && item.variantValue
+      ? `${item.variantType}: ${item.variantValue}`
+      : null
+
+  const stockLabel =
+    item.variantStock !== undefined && item.variantStock !== null
+      ? `Stok varian: ${item.variantStock}`
+      : null
 
   return (
     <div
@@ -21,15 +33,33 @@ function CartItem({ item, onRemove, onEdit }) {
             {item.name}
           </h4>
 
-          <p className="mt-0.5 text-xs font-medium text-slate-400">
-            {item.qty} x {formatRupiah(customPrice)}
+          {variantLabel && (
+            <p className="mt-1 w-fit rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+              {variantLabel}
+            </p>
+          )}
+
+          <p className="mt-1 text-xs font-medium text-slate-400">
+            {qty} x {formatRupiah(customPrice)}
           </p>
+
+          {stockLabel && (
+            <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+              {stockLabel}
+            </p>
+          )}
+
+          {item.note && (
+            <p className="mt-1 line-clamp-1 text-[11px] italic text-slate-400">
+              Catatan: {item.note}
+            </p>
+          )}
         </div>
 
         <button
           onClick={(e) => {
             e.stopPropagation()
-            onRemove(item.id)
+            onRemove(item.cartId || item.id)
           }}
           className="rounded-xl bg-red-50 px-2.5 py-1 text-xs font-bold text-red-500 hover:bg-red-100"
         >
@@ -37,10 +67,10 @@ function CartItem({ item, onRemove, onEdit }) {
         </button>
       </div>
 
-      <div className="mt-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-xl bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
-            Qty {item.qty}
+            Qty {qty}
           </span>
 
           {discountPercent > 0 && (

@@ -48,38 +48,45 @@ function CheckoutModal({
       invoiceNumber: `TRX-${Date.now()}`,
       date: new Date().toLocaleString("id-ID"),
       items: cartItems.map((item) => {
-        const customPrice = Number(item.customPrice || 0)
+        const customPrice = Number(item.customPrice || item.price || 0)
         const discountPercent = Number(item.discountPercent || 0)
+        const qty = Number(item.qty || 0)
 
         const priceAfterDiscount =
           customPrice - (customPrice * discountPercent) / 100
 
         return {
           id: item.id,
+          cartId: item.cartId,
           name: item.name,
           category: item.category,
-          qty: item.qty,
+
+          variantType: item.variantType || null,
+          variantValue: item.variantValue || null,
+          variantStock: item.variantStock ?? null,
+
+          qty,
           originalPrice: item.price,
           customPrice,
           discountPercent,
           priceAfterDiscount,
-          note: item.note,
-          total: priceAfterDiscount * item.qty,
+          note: item.note || "",
+          total: priceAfterDiscount * qty,
         }
       }),
-      subtotalBeforeMember,
-      total,
-      totalDiscount,
-      memberDiscount: Number(memberDiscount || 0),
-      isMember,
-      paymentMethod,
-      paidAmount: numericPaid,
-      change: displayChange,
-    }
+        subtotalBeforeMember,
+        total,
+        totalDiscount,
+        memberDiscount: Number(memberDiscount || 0),
+        isMember,
+        paymentMethod,
+        paidAmount: numericPaid,
+        change: displayChange,
+      }
 
-    onFinishTransaction(transaction)
-    setPaidAmount("")
-  }
+      onFinishTransaction(transaction)
+      setPaidAmount("")
+    }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3">

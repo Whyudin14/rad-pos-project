@@ -1,4 +1,6 @@
 import { useState } from "react"
+import { createRoot } from "react-dom/client"
+
 import MainLayout from "../layouts/MainLayout"
 import ProductCard from "../components/ProductCard"
 import CartItem from "../components/CartItem"
@@ -6,7 +8,7 @@ import CheckoutModal from "../components/CheckoutModal"
 import ReceiptSuccessModal from "../components/ReceiptSuccessModal"
 import EditCartItemModal from "../components/EditCartItemModal"
 import PrintReceipt from "../components/PrintReceipt"
-import { createRoot } from "react-dom/client"
+import ProductVariantModal from "../components/ProductVariantModal"
 
 import {
   saveTransaction,
@@ -14,10 +16,67 @@ import {
 } from "../utils/transactionStorage"
 
 const products = [
-  { id: 1, name: "MILLS Running", stock: 12, price: 549000, category: "Running" },
-  { id: 2, name: "Ortuseight Futsal", stock: 8, price: 399000, category: "Futsal" },
-  { id: 3, name: "Specs Accelerator", stock: 5, price: 699000, category: "Football" },
-  { id: 4, name: "Kaos Sport RAD", stock: 20, price: 129000, category: "Apparel" },
+  {
+    id: 1,
+    name: "MILLS Running",
+    stock: 12,
+    price: 549000,
+    category: "Running",
+    variantType: "Ukuran",
+    variants: [
+      { value: "39", stock: 1, price: 549000 },
+      { value: "40", stock: 3, price: 549000 },
+      { value: "41", stock: 2, price: 549000 },
+      { value: "42", stock: 4, price: 549000 },
+      { value: "43", stock: 2, price: 549000 },
+      { value: "44", stock: 0, price: 549000 },
+    ],
+  },
+  {
+    id: 2,
+    name: "Ortuseight Futsal",
+    stock: 8,
+    price: 399000,
+    category: "Futsal",
+    variantType: "Ukuran",
+    variants: [
+      { value: "39", stock: 1, price: 399000 },
+      { value: "40", stock: 2, price: 399000 },
+      { value: "41", stock: 0, price: 399000 },
+      { value: "42", stock: 3, price: 399000 },
+      { value: "43", stock: 2, price: 399000 },
+    ],
+  },
+  {
+    id: 3,
+    name: "Specs Accelerator",
+    stock: 5,
+    price: 699000,
+    category: "Football",
+    variantType: "Ukuran",
+    variants: [
+      { value: "40", stock: 1, price: 699000 },
+      { value: "41", stock: 0, price: 699000 },
+      { value: "42", stock: 2, price: 699000 },
+      { value: "43", stock: 1, price: 699000 },
+      { value: "44", stock: 1, price: 699000 },
+    ],
+  },
+  {
+    id: 4,
+    name: "Kaos Sport RAD",
+    stock: 20,
+    price: 129000,
+    category: "Apparel",
+    variantType: "Ukuran",
+    variants: [
+      { value: "S", stock: 4, price: 129000 },
+      { value: "M", stock: 6, price: 129000 },
+      { value: "L", stock: 5, price: 129000 },
+      { value: "XL", stock: 3, price: 129000 },
+      { value: "XXL", stock: 2, price: 129000 },
+    ],
+  },
 ]
 
 const categories = [
@@ -44,63 +103,111 @@ function POSKasir() {
   const [lastTransaction, setLastTransaction] = useState(null)
   const [isMember, setIsMember] = useState(false)
   const [selectedCartItem, setSelectedCartItem] = useState(null)
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [selectedVariant, setSelectedVariant] = useState(null)
 
   const formatRupiah = (number) => {
     return `Rp ${Number(number || 0).toLocaleString("id-ID")}`
   }
 
   const addToCart = (product) => {
-    const existingItem = cart.find((item) => item.id === product.id)
+    setSelectedProduct(product)
+    setSelectedVariant(null)
+  }
+
+  const confirmAddToCart = (variantData = selectedVariant) => {
+    if (!selectedProduct || !variantData) return
+
+    const variantValue = variantData.value
+    const variantPrice = Number(variantData.price || selectedProduct.price || 0)
+    const variantStock = Number(variantData.stock || 0)
+
+    const cartId = `${selectedProduct.id}-${variantValue}`
+
+    const existingItem = cart.find((item) => item.cartId === cartId)
 
     if (existingItem) {
       setSelectedCartItem(existingItem)
+      setSelectedProduct(null)
+      setSelectedVariant(null)
       return
     }
 
     const newItem = {
-      ...product,
+      ...selectedProduct,
+      cartId,
       qty: 1,
-      customPrice: product.price,
+      stock: variantStock,
+      price: variantPrice,
+      customPrice: variantPrice,
       discountPercent: 0,
       note: "",
+      variantType: selectedProduct.variantType || "Variasi",
+      variantValue,
+      variantStock,
     }
 
     setCart([...cart, newItem])
     setSelectedCartItem(newItem)
+    setSelectedProduct(null)
+    setSelectedVariant(null)
   }
 
-  const removeItem = (id) => {
-    setCart(cart.filter((item) => item.id !== id))
+  const removeItem = (targetId) => {
+    setCart(
+      cart.filter((item) => {
+        const itemTargetId = item.cartId || item.id
+        return itemTargetId !== targetId
+      })
+    )
   }
 
   const saveCartItemEdit = (id, updatedData) => {
+    const targetId = selectedCartItem?.cartId || id
+
     setCart(
-      cart.map((item) =>
-        item.id === id ? { ...item, ...updatedData } : item
-      )
+      cart.map((item) => {
+        const itemTargetId = item.cartId || item.id
+
+        if (itemTargetId === targetId) {
+          return {
+            ...item,
+            ...updatedData,
+          }
+        }
+
+        return item
+      })
     )
   }
 
   const subtotal = cart.reduce((total, item) => {
     const customPrice = Number(item.customPrice || 0)
     const discountPercent = Number(item.discountPercent || 0)
+    const qty = Number(item.qty || 0)
+
     const priceAfterDiscount =
       customPrice - (customPrice * discountPercent) / 100
 
-    return total + priceAfterDiscount * item.qty
+    return total + priceAfterDiscount * qty
   }, 0)
 
   const totalDiscount = cart.reduce((total, item) => {
     const customPrice = Number(item.customPrice || 0)
     const discountPercent = Number(item.discountPercent || 0)
-    const discountValue = ((customPrice * discountPercent) / 100) * item.qty
+    const qty = Number(item.qty || 0)
+
+    const discountValue = ((customPrice * discountPercent) / 100) * qty
 
     return total + discountValue
   }, 0)
 
   const memberDiscount = isMember && subtotal >= 300000 ? subtotal * 0.05 : 0
   const grandTotal = subtotal - memberDiscount
-  const totalItems = cart.reduce((total, item) => total + item.qty, 0)
+
+  const totalItems = cart.reduce((total, item) => {
+    return total + Number(item.qty || 0)
+  }, 0)
 
   const handleFinishTransaction = (transaction) => {
     const newTransaction = {
@@ -121,202 +228,202 @@ function POSKasir() {
   }
 
   const handlePrintReceipt = () => {
-  if (!lastTransaction) return
+    if (!lastTransaction) return
 
-  const printWindow = window.open("", "_blank", "width=360,height=640")
+    const printWindow = window.open("", "_blank", "width=360,height=640")
 
-  if (!printWindow) {
-    alert("Popup print diblokir browser. Izinkan popup dulu ya.")
-    return
-  }
+    if (!printWindow) {
+      alert("Popup print diblokir browser. Izinkan popup dulu ya.")
+      return
+    }
 
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Cetak Struk</title>
-        <style>
-          @page {
-            size: 58mm auto;
-            margin: 0;
-          }
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Cetak Struk</title>
+          <style>
+            @page {
+              size: 58mm auto;
+              margin: 0;
+            }
 
-          * {
-            box-sizing: border-box;
-          }
+            * {
+              box-sizing: border-box;
+            }
 
-          html,
-          body {
-            width: 58mm;
-            margin: 0;
-            padding: 0;
-            background: #fff;
-            color: #000;
-            font-family: Arial, Helvetica, sans-serif;
-          }
-
-          #print-root {
-            width: 58mm;
-            max-width: 58mm;
-            margin: 0;
-            padding: 6px 5px;
-          }
-
-          .print-receipt {
-            width: 100%;
-            max-width: 100%;
-            font-size: 10px;
-            line-height: 1.28;
-          }
-
-          .receipt-header {
-            text-align: center;
-          }
-
-          .receipt-logo {
-            margin-bottom: 3px;
-            font-size: 12px;
-            font-weight: 900;
-            letter-spacing: 1px;
-          }
-
-          .receipt-header h2 {
-            margin: 0;
-            font-size: 12px;
-            font-weight: 900;
-            line-height: 1.2;
-          }
-
-          .receipt-header p {
-            margin: 1px 0;
-            font-size: 9.5px;
-            line-height: 1.25;
-          }
-
-          .line {
-            width: 100%;
-            margin: 6px 0;
-            border-top: 1px dashed #000;
-          }
-
-          .receipt-info {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 6px;
-            font-size: 10px;
-          }
-
-          .receipt-info p {
-            margin: 1px 0;
-          }
-
-          .right {
-            text-align: right;
-            white-space: nowrap;
-          }
-
-          .receipt-items {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-          }
-
-          .receipt-item p {
-            margin: 0;
-          }
-
-          .item-name {
-            font-size: 10.5px;
-            font-weight: 900;
-            line-height: 1.25;
-            text-transform: uppercase;
-            word-break: break-word;
-          }
-
-          .row {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 6px;
-            align-items: start;
-          }
-
-          .row span:first-child {
-            min-width: 0;
-            word-break: break-word;
-          }
-
-          .row span:last-child {
-            text-align: right;
-            white-space: nowrap;
-          }
-
-          .small {
-            font-size: 9.5px;
-          }
-
-          .note {
-            margin-top: 2px !important;
-            font-size: 9.5px;
-            font-style: italic;
-          }
-
-          .summary,
-          .payment {
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-          }
-
-          .total {
-            margin-bottom: 3px;
-            font-size: 12.5px;
-            font-weight: 900;
-          }
-
-          .receipt-footer {
-            text-align: center;
-          }
-
-          .receipt-footer p {
-            margin: 2px 0;
-            font-size: 10px;
-          }
-
-          @media print {
             html,
             body {
               width: 58mm;
               margin: 0;
               padding: 0;
+              background: #fff;
+              color: #000;
+              font-family: Arial, Helvetica, sans-serif;
             }
 
             #print-root {
               width: 58mm;
               max-width: 58mm;
+              margin: 0;
               padding: 6px 5px;
             }
-          }
-        </style>
-      </head>
 
-      <body>
-        <div id="print-root"></div>
-      </body>
-    </html>
-  `)
+            .print-receipt {
+              width: 100%;
+              max-width: 100%;
+              font-size: 10px;
+              line-height: 1.28;
+            }
 
-  printWindow.document.close()
+            .receipt-header {
+              text-align: center;
+            }
 
-  const rootElement = printWindow.document.getElementById("print-root")
-  const root = createRoot(rootElement)
+            .receipt-logo {
+              margin-bottom: 3px;
+              font-size: 12px;
+              font-weight: 900;
+              letter-spacing: 1px;
+            }
 
-  root.render(<PrintReceipt transaction={lastTransaction} />)
+            .receipt-header h2 {
+              margin: 0;
+              font-size: 12px;
+              font-weight: 900;
+              line-height: 1.2;
+            }
 
-  setTimeout(() => {
-    printWindow.focus()
-    printWindow.print()
-  }, 500)
-}
+            .receipt-header p {
+              margin: 1px 0;
+              font-size: 9.5px;
+              line-height: 1.25;
+            }
+
+            .line {
+              width: 100%;
+              margin: 6px 0;
+              border-top: 1px dashed #000;
+            }
+
+            .receipt-info {
+              display: grid;
+              grid-template-columns: 1fr auto;
+              gap: 6px;
+              font-size: 10px;
+            }
+
+            .receipt-info p {
+              margin: 1px 0;
+            }
+
+            .right {
+              text-align: right;
+              white-space: nowrap;
+            }
+
+            .receipt-items {
+              display: flex;
+              flex-direction: column;
+              gap: 6px;
+            }
+
+            .receipt-item p {
+              margin: 0;
+            }
+
+            .item-name {
+              font-size: 10.5px;
+              font-weight: 900;
+              line-height: 1.25;
+              text-transform: uppercase;
+              word-break: break-word;
+            }
+
+            .row {
+              display: grid;
+              grid-template-columns: 1fr auto;
+              gap: 6px;
+              align-items: start;
+            }
+
+            .row span:first-child {
+              min-width: 0;
+              word-break: break-word;
+            }
+
+            .row span:last-child {
+              text-align: right;
+              white-space: nowrap;
+            }
+
+            .small {
+              font-size: 9.5px;
+            }
+
+            .note {
+              margin-top: 2px !important;
+              font-size: 9.5px;
+              font-style: italic;
+            }
+
+            .summary,
+            .payment {
+              display: flex;
+              flex-direction: column;
+              gap: 3px;
+            }
+
+            .total {
+              margin-bottom: 3px;
+              font-size: 12.5px;
+              font-weight: 900;
+            }
+
+            .receipt-footer {
+              text-align: center;
+            }
+
+            .receipt-footer p {
+              margin: 2px 0;
+              font-size: 10px;
+            }
+
+            @media print {
+              html,
+              body {
+                width: 58mm;
+                margin: 0;
+                padding: 0;
+              }
+
+              #print-root {
+                width: 58mm;
+                max-width: 58mm;
+                padding: 6px 5px;
+              }
+            }
+          </style>
+        </head>
+
+        <body>
+          <div id="print-root"></div>
+        </body>
+      </html>
+    `)
+
+    printWindow.document.close()
+
+    const rootElement = printWindow.document.getElementById("print-root")
+    const root = createRoot(rootElement)
+
+    root.render(<PrintReceipt transaction={lastTransaction} />)
+
+    setTimeout(() => {
+      printWindow.focus()
+      printWindow.print()
+    }, 500)
+  }
 
   const filteredProducts = products.filter((product) => {
     const matchSearch =
@@ -429,10 +536,10 @@ function POSKasir() {
                 <div className="space-y-3">
                   {cart.map((item) => (
                     <CartItem
-                      key={item.id}
+                      key={item.cartId || item.id}
                       item={item}
-                      onRemove={removeItem}
-                      onEdit={setSelectedCartItem}
+                      onRemove={() => removeItem(item.cartId || item.id)}
+                      onEdit={() => setSelectedCartItem(item)}
                     />
                   ))}
                 </div>
@@ -478,7 +585,9 @@ function POSKasir() {
               <div className="my-3 border-t border-slate-200" />
 
               <div className="mb-3 flex items-end justify-between">
-                <span className="text-sm font-bold text-slate-500">Total Akhir</span>
+                <span className="text-sm font-bold text-slate-500">
+                  Total Akhir
+                </span>
                 <span className="text-3xl font-black leading-none text-blue-600">
                   {formatRupiah(grandTotal)}
                 </span>
@@ -519,6 +628,18 @@ function POSKasir() {
         onClose={() => setSelectedCartItem(null)}
         item={selectedCartItem}
         onSave={saveCartItemEdit}
+      />
+
+      <ProductVariantModal
+        isOpen={!!selectedProduct}
+        onClose={() => {
+          setSelectedProduct(null)
+          setSelectedVariant(null)
+        }}
+        product={selectedProduct}
+        selectedVariant={selectedVariant}
+        setSelectedVariant={setSelectedVariant}
+        onConfirm={confirmAddToCart}
       />
     </MainLayout>
   )
