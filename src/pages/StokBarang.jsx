@@ -17,6 +17,8 @@ function StokBarang() {
   const [showOpnameHistory, setShowOpnameHistory] = useState(false)
   const [stockOpnameHistory, setStockOpnameHistory] = useState([])
   const [opnameHistoryFilter, setOpnameHistoryFilter] = useState("Semua")
+  const [opnameHistorySessionFilter, setOpnameHistorySessionFilter] =
+    useState("Semua Sesi")
   const [opnameHistorySearch, setOpnameHistorySearch] = useState("")
 
   const [showCreateSession, setShowCreateSession] = useState(false)
@@ -176,6 +178,20 @@ function StokBarang() {
     return activeStockOpnameSession.categories?.includes(product.category)
   }
 
+  const isHistoryWithoutSession = (item) => {
+    return (
+      !item.sessionId ||
+      item.sessionId === "null" ||
+      item.sessionId === "undefined" ||
+      !item.sessionName ||
+      item.sessionName === "Tanpa Sesi" ||
+      item.sessionName === "Tanpa sesi aktif" ||
+      !item.sessionType ||
+      item.sessionType === "-" ||
+      item.sessionType === "Tanpa Sesi"
+    )
+  }
+
   const totalProducts = products.length
 
   const totalVariants = products.reduce((total, product) => {
@@ -215,7 +231,7 @@ function StokBarang() {
 
     const matchVariant = product.variants?.some((variant) => {
       return (
-        variant.value?.toLowerCase().includes(keyword) ||
+        variant.value?.toString().toLowerCase().includes(keyword) ||
         variant.sku?.toLowerCase().includes(keyword) ||
         variant.barcode?.includes(searchTerm)
       )
@@ -400,6 +416,15 @@ function StokBarang() {
   const stockFilters = ["Semua", "Aman", "Menipis", "Kosong"]
   const opnameHistoryFilters = ["Semua", "Sesuai", "Lebih", "Kurang"]
 
+  const opnameHistorySessionFilters = [
+    "Semua Sesi",
+    "Aksesoris",
+    "Running & Lifestyle",
+    "Football",
+    "Futsal",
+    "Tanpa Sesi",
+  ]
+
   const selectedSystemStock = Number(selectedStockOpname?.systemStock || 0)
   const selectedPhysicalStock = Number(physicalStock || 0)
   const selectedDifference =
@@ -410,6 +435,12 @@ function StokBarang() {
 
     const matchStatus =
       opnameHistoryFilter === "Semua" || item.status === opnameHistoryFilter
+
+    const matchSession =
+      opnameHistorySessionFilter === "Semua Sesi" ||
+      item.sessionType === opnameHistorySessionFilter ||
+      (opnameHistorySessionFilter === "Tanpa Sesi" &&
+        isHistoryWithoutSession(item))
 
     const matchSearch =
       item.productName?.toLowerCase().includes(keyword) ||
@@ -425,7 +456,7 @@ function StokBarang() {
       item.sessionType?.toLowerCase().includes(keyword) ||
       item.sessionScheduleDay?.toLowerCase().includes(keyword)
 
-    return matchStatus && matchSearch
+    return matchStatus && matchSession && matchSearch
   })
 
   const totalOpnameHistory = stockOpnameHistory.length
@@ -1009,8 +1040,8 @@ function StokBarang() {
 
         {showCreateSession && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl">
-              <div className="mb-5 flex items-start justify-between gap-4">
+            <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
                 <div>
                   <p className="text-sm font-black uppercase tracking-wide text-emerald-600">
                     Sesi Stok Opname
@@ -1027,64 +1058,66 @@ function StokBarang() {
 
                 <button
                   onClick={() => setShowCreateSession(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="mb-5 grid gap-3 sm:grid-cols-2">
-                {stockOpnameTypes.map((item) => {
-                  const isActive = selectedSessionType === item.type
+              <div className="overflow-y-auto px-5 py-4 sm:px-6">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {stockOpnameTypes.map((item) => {
+                    const isActive = selectedSessionType === item.type
 
-                  return (
-                    <button
-                      key={item.type}
-                      onClick={() => setSelectedSessionType(item.type)}
-                      className={`rounded-2xl border p-4 text-left transition ${
-                        isActive
-                          ? "border-emerald-300 bg-emerald-50 ring-4 ring-emerald-50"
-                          : "border-slate-200 bg-white hover:bg-slate-50"
-                      }`}
-                    >
-                      <p
-                        className={`text-lg font-black ${
-                          isActive ? "text-emerald-700" : "text-slate-900"
+                    return (
+                      <button
+                        key={item.type}
+                        onClick={() => setSelectedSessionType(item.type)}
+                        className={`rounded-2xl border p-4 text-left transition ${
+                          isActive
+                            ? "border-emerald-300 bg-emerald-50 ring-4 ring-emerald-50"
+                            : "border-slate-200 bg-white hover:bg-slate-50"
                         }`}
                       >
-                        {item.type}
-                      </p>
+                        <p
+                          className={`text-xl font-black ${
+                            isActive ? "text-emerald-700" : "text-slate-900"
+                          }`}
+                        >
+                          {item.type}
+                        </p>
 
-                      <p className="mt-1 text-sm font-black text-slate-500">
-                        Jadwal: {item.scheduleDay}
-                      </p>
+                        <p className="mt-1 text-sm font-black text-slate-500">
+                          Jadwal: {item.scheduleDay}
+                        </p>
 
-                      <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-400">
-                        Kategori: {item.categories.join(", ")}
-                      </p>
-                    </button>
-                  )
-                })}
+                        <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-400">
+                          Kategori: {item.categories.join(", ")}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-bold leading-relaxed text-blue-600">
+                  Catatan: bola sepak fisik masuk ke Aksesoris. Sepatu bola pakai
+                  kategori Football dan Football Junior.
+                </div>
+
+                <div className="mt-4">
+                  <label className="text-xs font-black uppercase tracking-wide text-slate-400">
+                    Catatan Sesi
+                  </label>
+                  <textarea
+                    value={sessionNote}
+                    onChange={(e) => setSessionNote(e.target.value)}
+                    placeholder="Contoh: SO closing mingguan, cek rak display dan gudang..."
+                    className="mt-2 min-h-24 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50"
+                  />
+                </div>
               </div>
 
-              <div className="mb-5 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-bold leading-relaxed text-blue-600">
-                Catatan: bola sepak fisik masuk ke Aksesoris. Sepatu bola pakai
-                kategori Football dan Football Junior.
-              </div>
-
-              <div className="mb-5">
-                <label className="text-xs font-black uppercase tracking-wide text-slate-400">
-                  Catatan Sesi
-                </label>
-                <textarea
-                  value={sessionNote}
-                  onChange={(e) => setSessionNote(e.target.value)}
-                  placeholder="Contoh: SO closing mingguan, cek rak display dan gudang..."
-                  className="mt-2 min-h-24 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50"
-                />
-              </div>
-
-              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
                 <button
                   onClick={() => setShowCreateSession(false)}
                   className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-200"
@@ -1110,8 +1143,8 @@ function StokBarang() {
 
         {selectedStockOpname && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
-              <div className="mb-5 flex items-start justify-between gap-4">
+            <div className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
                 <div>
                   <p className="text-sm font-black uppercase tracking-wide text-blue-600">
                     Stok Opname
@@ -1128,140 +1161,142 @@ function StokBarang() {
 
                 <button
                   onClick={closeStockOpnameModal}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-lg font-black text-slate-900">
-                  {selectedStockOpname.productName}
-                </p>
+              <div className="overflow-y-auto px-5 py-4 sm:px-6">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-2xl font-black text-slate-900">
+                    {selectedStockOpname.productName}
+                  </p>
 
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                      Ukuran
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                        Ukuran
+                      </p>
+                      <p className="mt-1 text-base font-black text-slate-900">
+                        {selectedStockOpname.variantValue}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                        Letak Rak
+                      </p>
+                      <p className="mt-1 text-base font-black text-slate-900">
+                        {selectedStockOpname.rackLocation || "-"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                        SKU
+                      </p>
+                      <p className="mt-1 break-all text-base font-black text-slate-900">
+                        {selectedStockOpname.sku || "-"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                        Barcode
+                      </p>
+                      <p className="mt-1 break-all text-base font-black text-slate-900">
+                        {selectedStockOpname.barcode || "-"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                  <p className="text-xs font-black uppercase tracking-wide text-emerald-600">
+                    Sesi SO
+                  </p>
+                  <p className="mt-1 text-sm font-black text-emerald-700">
+                    {activeStockOpnameSession
+                      ? activeStockOpnameSession.name
+                      : "Tanpa sesi aktif"}
+                  </p>
+                  {!activeStockOpnameSession && (
+                    <p className="mt-1 text-xs font-bold text-emerald-600">
+                      Data tetap bisa disimpan, tapi sebaiknya buat sesi SO dulu
+                      agar riwayat lebih rapi.
                     </p>
-                    <p className="mt-1 text-sm font-black text-slate-900">
-                      {selectedStockOpname.variantValue}
+                  )}
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                      Stok Sistem
+                    </p>
+                    <p className="mt-2 text-3xl font-black text-slate-900">
+                      {selectedSystemStock}
                     </p>
                   </div>
 
-                  <div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                      Letak Rak
+                      Stok Fisik
                     </p>
-                    <p className="mt-1 text-sm font-black text-slate-900">
-                      {selectedStockOpname.rackLocation || "-"}
-                    </p>
+                    <input
+                      type="number"
+                      min="0"
+                      value={physicalStock}
+                      onChange={(e) => setPhysicalStock(e.target.value)}
+                      placeholder="0"
+                      className="mt-2 w-full bg-transparent text-3xl font-black text-slate-900 outline-none placeholder:text-slate-300"
+                    />
                   </div>
 
-                  <div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                      SKU
+                      Selisih
                     </p>
-                    <p className="mt-1 break-all text-sm font-black text-slate-900">
-                      {selectedStockOpname.sku || "-"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                      Barcode
-                    </p>
-                    <p className="mt-1 break-all text-sm font-black text-slate-900">
-                      {selectedStockOpname.barcode || "-"}
+                    <p
+                      className={`mt-2 text-3xl font-black ${
+                        physicalStock === ""
+                          ? "text-slate-300"
+                          : selectedDifference === 0
+                          ? "text-emerald-600"
+                          : selectedDifference > 0
+                          ? "text-blue-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {physicalStock === ""
+                        ? "-"
+                        : selectedDifference > 0
+                        ? `+${selectedDifference}`
+                        : selectedDifference}
                     </p>
                   </div>
                 </div>
-              </div>
 
-              <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-                <p className="text-xs font-black uppercase tracking-wide text-emerald-600">
-                  Sesi SO
-                </p>
-                <p className="mt-1 text-sm font-black text-emerald-700">
-                  {activeStockOpnameSession
-                    ? activeStockOpnameSession.name
-                    : "Tanpa sesi aktif"}
-                </p>
-                {!activeStockOpnameSession && (
-                  <p className="mt-1 text-xs font-bold text-emerald-600">
-                    Data tetap bisa disimpan, tapi sebaiknya buat sesi SO dulu
-                    agar riwayat lebih rapi.
-                  </p>
-                )}
-              </div>
-
-              <div className="mb-4 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                    Stok Sistem
-                  </p>
-                  <p className="mt-1 text-2xl font-black text-slate-900">
-                    {selectedSystemStock}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                    Stok Fisik
-                  </p>
-                  <input
-                    type="number"
-                    min="0"
-                    value={physicalStock}
-                    onChange={(e) => setPhysicalStock(e.target.value)}
-                    placeholder="0"
-                    className="mt-1 w-full text-2xl font-black text-slate-900 outline-none placeholder:text-slate-300"
+                <div className="mt-4">
+                  <label className="text-xs font-black uppercase tracking-wide text-slate-400">
+                    Catatan
+                  </label>
+                  <textarea
+                    value={opnameNote}
+                    onChange={(e) => setOpnameNote(e.target.value)}
+                    placeholder="Contoh: barang ada di display, dus belum dicek, selisih karena retur, dll."
+                    className="mt-2 min-h-24 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
                   />
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                    Selisih
-                  </p>
-                  <p
-                    className={`mt-1 text-2xl font-black ${
-                      physicalStock === ""
-                        ? "text-slate-300"
-                        : selectedDifference === 0
-                        ? "text-emerald-600"
-                        : selectedDifference > 0
-                        ? "text-blue-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {physicalStock === ""
-                      ? "-"
-                      : selectedDifference > 0
-                      ? `+${selectedDifference}`
-                      : selectedDifference}
-                  </p>
-                </div>
+                {showOpnameSuccess && (
+                  <div className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-600">
+                    Data stok opname berhasil disimpan.
+                  </div>
+                )}
               </div>
 
-              <div className="mb-5">
-                <label className="text-xs font-black uppercase tracking-wide text-slate-400">
-                  Catatan
-                </label>
-                <textarea
-                  value={opnameNote}
-                  onChange={(e) => setOpnameNote(e.target.value)}
-                  placeholder="Contoh: barang ada di display, dus belum dicek, selisih karena retur, dll."
-                  className="mt-2 min-h-24 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-                />
-              </div>
-
-              {showOpnameSuccess && (
-                <div className="mb-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-600">
-                  Data stok opname berhasil disimpan.
-                </div>
-              )}
-
-              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
                 <button
                   onClick={closeStockOpnameModal}
                   className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-200"
@@ -1287,10 +1322,10 @@ function StokBarang() {
 
         {showOpnameHistory && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="flex max-h-[90vh] w-full max-w-6xl flex-col rounded-3xl bg-white p-6 shadow-2xl">
-              <div className="mb-5 flex items-start justify-between gap-4">
+            <div className="flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
                 <div>
-                  <p className="text-sm font-black uppercase tracking-wide text-blue-600">
+                  <p className="text-xs font-black uppercase tracking-wide text-blue-600">
                     Riwayat
                   </p>
 
@@ -1299,99 +1334,145 @@ function StokBarang() {
                   </h3>
 
                   <p className="mt-1 text-sm font-semibold text-slate-500">
-                    Cari riwayat berdasarkan sesi, nama barang, SKU, barcode,
-                    ukuran, rak, status, atau catatan.
+                    Cek hasil SO berdasarkan sesi, status, barang, ukuran, SKU,
+                    rak, dan catatan.
                   </p>
                 </div>
 
                 <button
                   onClick={() => setShowOpnameHistory(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                    Total SO
-                  </p>
-                  <p className="mt-1 text-2xl font-black text-slate-900">
-                    {totalOpnameHistory}
-                  </p>
+              <div className="flex flex-1 flex-col overflow-hidden px-5 py-4 sm:px-6">
+                <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                    <p className="text-[11px] font-black uppercase tracking-wide text-slate-400">
+                      Total SO
+                    </p>
+                    <p className="mt-1 text-2xl font-black text-slate-900">
+                      {totalOpnameHistory}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                    <p className="text-[11px] font-black uppercase tracking-wide text-emerald-500">
+                      Sesuai
+                    </p>
+                    <p className="mt-1 text-2xl font-black text-emerald-600">
+                      {totalOpnameSesuai}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
+                    <p className="text-[11px] font-black uppercase tracking-wide text-blue-500">
+                      Lebih
+                    </p>
+                    <p className="mt-1 text-2xl font-black text-blue-600">
+                      {totalOpnameLebih}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3">
+                    <p className="text-[11px] font-black uppercase tracking-wide text-red-500">
+                      Kurang
+                    </p>
+                    <p className="mt-1 text-2xl font-black text-red-600">
+                      {totalOpnameKurang}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-wide text-emerald-500">
-                    Sesuai
-                  </p>
-                  <p className="mt-1 text-2xl font-black text-emerald-600">
-                    {totalOpnameSesuai}
-                  </p>
+                <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+                    <div className="flex flex-1 flex-col gap-3">
+                      <div>
+                        <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-slate-400">
+                          Filter Status
+                        </p>
+
+                        <div className="flex flex-wrap gap-2">
+                          {opnameHistoryFilters.map((filter) => {
+                            const isActive = opnameHistoryFilter === filter
+
+                            return (
+                              <button
+                                key={filter}
+                                onClick={() => setOpnameHistoryFilter(filter)}
+                                className={`rounded-xl px-3 py-2 text-xs font-black transition ${
+                                  isActive
+                                    ? "bg-slate-900 text-white"
+                                    : "bg-white text-slate-500 hover:bg-slate-100"
+                                }`}
+                              >
+                                {filter}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-slate-400">
+                          Filter Jenis Sesi
+                        </p>
+
+                        <div className="flex flex-wrap gap-2">
+                          {opnameHistorySessionFilters.map((filter) => {
+                            const isActive =
+                              opnameHistorySessionFilter === filter
+
+                            return (
+                              <button
+                                key={filter}
+                                onClick={() =>
+                                  setOpnameHistorySessionFilter(filter)
+                                }
+                                className={`rounded-xl px-3 py-2 text-xs font-black transition ${
+                                  isActive
+                                    ? "bg-emerald-600 text-white"
+                                    : "bg-white text-emerald-600 hover:bg-emerald-50"
+                                }`}
+                              >
+                                {filter}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="w-full xl:max-w-sm">
+                      <input
+                        type="text"
+                        value={opnameHistorySearch}
+                        onChange={(e) => setOpnameHistorySearch(e.target.value)}
+                        placeholder="Cari riwayat SO..."
+                        className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                      />
+
+                      <p className="mt-2 text-xs font-bold text-blue-600">
+                        Menampilkan {filteredStockOpnameHistory.length} dari{" "}
+                        {stockOpnameHistory.length} riwayat SO.
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-wide text-blue-500">
-                    Lebih
-                  </p>
-                  <p className="mt-1 text-2xl font-black text-blue-600">
-                    {totalOpnameLebih}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-red-100 bg-red-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-wide text-red-500">
-                    Kurang
-                  </p>
-                  <p className="mt-1 text-2xl font-black text-red-600">
-                    {totalOpnameKurang}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                <div className="flex flex-wrap gap-2">
-                  {opnameHistoryFilters.map((filter) => {
-                    const isActive = opnameHistoryFilter === filter
-
-                    return (
-                      <button
-                        key={filter}
-                        onClick={() => setOpnameHistoryFilter(filter)}
-                        className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
-                          isActive
-                            ? "bg-slate-900 text-white"
-                            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                        }`}
-                      >
-                        {filter}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <input
-                  type="text"
-                  value={opnameHistorySearch}
-                  onChange={(e) => setOpnameHistorySearch(e.target.value)}
-                  placeholder="Cari riwayat SO..."
-                  className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 xl:max-w-md"
-                />
-              </div>
-
-              {stockOpnameHistory.length === 0 ? (
-                <div className="flex h-64 items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 text-sm font-bold text-slate-400">
-                  Belum ada riwayat stok opname
-                </div>
-              ) : filteredStockOpnameHistory.length === 0 ? (
-                <div className="flex h-64 items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 text-sm font-bold text-slate-400">
-                  Riwayat SO tidak ditemukan
-                </div>
-              ) : (
-                <div className="overflow-auto rounded-2xl border border-slate-200">
-                  <div className="min-w-[1120px]">
-                    <div className="grid grid-cols-[0.9fr_1.25fr_0.5fr_0.45fr_0.45fr_0.5fr_0.6fr_1.25fr_0.5fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400">
+                {stockOpnameHistory.length === 0 ? (
+                  <div className="flex flex-1 items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 text-sm font-bold text-slate-400">
+                    Belum ada riwayat stok opname
+                  </div>
+                ) : filteredStockOpnameHistory.length === 0 ? (
+                  <div className="flex flex-1 items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 text-sm font-bold text-slate-400">
+                    Riwayat SO tidak ditemukan
+                  </div>
+                ) : (
+                  <div className="flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white">
+                    <div className="hidden grid-cols-[0.95fr_1.45fr_0.45fr_0.45fr_0.45fr_0.5fr_0.6fr_1fr_0.45fr] gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-400 xl:grid">
                       <span>Tanggal</span>
                       <span>Barang</span>
                       <span>Ukuran</span>
@@ -1408,44 +1489,79 @@ function StokBarang() {
                         return (
                           <div
                             key={item.id}
-                            className="grid grid-cols-[0.9fr_1.25fr_0.5fr_0.45fr_0.45fr_0.5fr_0.6fr_1.25fr_0.5fr] gap-3 px-4 py-3 text-sm font-bold text-slate-700"
+                            className="grid gap-3 px-4 py-3 text-sm font-bold text-slate-700 xl:grid-cols-[0.95fr_1.45fr_0.45fr_0.45fr_0.45fr_0.5fr_0.6fr_1fr_0.45fr] xl:items-start"
                           >
-                            <span className="text-xs text-slate-500">
-                              {formatDateTime(item.date)}
-                            </span>
+                            <div>
+                              <p className="text-[11px] font-black uppercase tracking-wide text-slate-400 xl:hidden">
+                                Tanggal
+                              </p>
+                              <p className="text-xs font-bold text-slate-500">
+                                {formatDateTime(item.date)}
+                              </p>
+                            </div>
 
-                            <span>
-                              <span className="block font-black text-slate-900">
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-black uppercase tracking-wide text-slate-400 xl:hidden">
+                                Barang
+                              </p>
+
+                              <p className="truncate text-sm font-black text-slate-900">
                                 {item.productName}
-                              </span>
-                              <span className="block break-all text-xs text-slate-400">
+                              </p>
+
+                              <p className="mt-0.5 truncate text-xs font-bold text-slate-400">
                                 {item.sku || "-"}
-                              </span>
-                              <span className="block text-xs text-slate-400">
+                              </p>
+
+                              <p className="mt-0.5 truncate text-xs font-bold text-slate-400">
                                 Rak: {item.rackLocation || "-"}
-                              </span>
-                              <span className="mt-1 block text-xs font-black text-emerald-600">
+                              </p>
+
+                              <p className="mt-1 truncate text-xs font-black text-emerald-600">
                                 {item.sessionName || "Tanpa Sesi"}
-                              </span>
-                            </span>
+                              </p>
+                            </div>
 
-                            <span className="font-black text-slate-900">
-                              {item.variantValue}
-                            </span>
+                            <div>
+                              <p className="text-[11px] font-black uppercase tracking-wide text-slate-400 xl:hidden">
+                                Ukuran
+                              </p>
+                              <p className="font-black text-slate-900">
+                                {item.variantValue}
+                              </p>
+                            </div>
 
-                            <span>{item.systemStock}</span>
+                            <div>
+                              <p className="text-[11px] font-black uppercase tracking-wide text-slate-400 xl:hidden">
+                                Sistem
+                              </p>
+                              <p>{item.systemStock}</p>
+                            </div>
 
-                            <span>{item.physicalStock}</span>
+                            <div>
+                              <p className="text-[11px] font-black uppercase tracking-wide text-slate-400 xl:hidden">
+                                Fisik
+                              </p>
+                              <p>{item.physicalStock}</p>
+                            </div>
 
-                            <span
-                              className={`font-black ${getDifferenceClass(
-                                item.difference
-                              )}`}
-                            >
-                              {formatDifference(item.difference)}
-                            </span>
+                            <div>
+                              <p className="text-[11px] font-black uppercase tracking-wide text-slate-400 xl:hidden">
+                                Selisih
+                              </p>
+                              <p
+                                className={`font-black ${getDifferenceClass(
+                                  item.difference
+                                )}`}
+                              >
+                                {formatDifference(item.difference)}
+                              </p>
+                            </div>
 
-                            <span>
+                            <div>
+                              <p className="text-[11px] font-black uppercase tracking-wide text-slate-400 xl:hidden">
+                                Status
+                              </p>
                               <span
                                 className={`inline-flex rounded-full border px-2 py-1 text-xs font-black ${getOpnameStatusClass(
                                   item.status
@@ -1453,29 +1569,32 @@ function StokBarang() {
                               >
                                 {item.status}
                               </span>
-                            </span>
+                            </div>
 
-                            <span className="text-xs font-semibold leading-relaxed text-slate-500">
-                              {item.note || "-"}
-                            </span>
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-black uppercase tracking-wide text-slate-400 xl:hidden">
+                                Catatan
+                              </p>
+                              <p className="line-clamp-2 text-xs font-semibold leading-relaxed text-slate-500">
+                                {item.note || "-"}
+                              </p>
+                            </div>
 
-                            <span className="text-right">
+                            <div className="flex xl:justify-end">
                               <button
-                                onClick={() =>
-                                  deleteStockOpnameHistory(item.id)
-                                }
+                                onClick={() => deleteStockOpnameHistory(item.id)}
                                 className="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-black text-red-600 transition hover:bg-red-100"
                               >
                                 Hapus
                               </button>
-                            </span>
+                            </div>
                           </div>
                         )
                       })}
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         )}
