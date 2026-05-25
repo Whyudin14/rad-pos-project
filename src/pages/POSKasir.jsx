@@ -20,6 +20,7 @@ import {
 function POSKasir() {
   const [cart, setCart] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
+  const [barcodeInput, setBarcodeInput] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
   const [isReceiptOpen, setIsReceiptOpen] = useState(false)
@@ -38,26 +39,28 @@ function POSKasir() {
     setSelectedVariant(null)
   }
 
-  const confirmAddToCart = (variantData = selectedVariant) => {
-    if (!selectedProduct || !variantData) return
+  const addProductVariantToCart = (product, variantData) => {
+    if (!product || !variantData) return false
 
     const variantValue = variantData.value
-    const variantPrice = Number(variantData.price || selectedProduct.price || 0)
+    const variantPrice = Number(variantData.price || product.price || 0)
     const variantStock = Number(variantData.stock || 0)
 
-    const cartId = `${selectedProduct.id}-${variantValue}`
+    if (variantStock <= 0) {
+      alert("Stok varian ini kosong")
+      return false
+    }
 
+    const cartId = `${product.id}-${variantValue}`
     const existingItem = cart.find((item) => item.cartId === cartId)
 
     if (existingItem) {
       setSelectedCartItem(existingItem)
-      setSelectedProduct(null)
-      setSelectedVariant(null)
-      return
+      return true
     }
 
     const newItem = {
-      ...selectedProduct,
+      ...product,
       cartId,
       qty: 1,
       stock: variantStock,
@@ -65,15 +68,73 @@ function POSKasir() {
       customPrice: variantPrice,
       discountPercent: 0,
       note: "",
-      variantType: selectedProduct.variantType || "Variasi",
+
+      variantId: variantData.id || null,
+      variantType: product.variantType || "Variasi",
       variantValue,
       variantStock,
+
+      productSku: product.sku || "",
+      productBarcode: product.barcode || "",
+      variantSku: variantData.sku || "",
+      variantBarcode: variantData.barcode || "",
     }
 
-    setCart([...cart, newItem])
+    setCart((prevCart) => [...prevCart, newItem])
     setSelectedCartItem(newItem)
+
+    return true
+  }
+
+  const confirmAddToCart = (variantData = selectedVariant) => {
+    if (!selectedProduct || !variantData) return
+
+    addProductVariantToCart(selectedProduct, variantData)
+
     setSelectedProduct(null)
     setSelectedVariant(null)
+  }
+
+  const handleBarcodeSubmit = (e) => {
+    e.preventDefault()
+
+    const keyword = barcodeInput.trim()
+
+    if (!keyword) return
+
+    const normalizedKeyword = keyword.toLowerCase()
+
+    const matchedProduct = products.find((product) => {
+      return (
+        product.barcode === keyword ||
+        product.sku?.toLowerCase() === normalizedKeyword
+      )
+    })
+
+    if (matchedProduct) {
+      setSelectedProduct(matchedProduct)
+      setSelectedVariant(null)
+      setBarcodeInput("")
+      return
+    }
+
+    for (const product of products) {
+      const matchedVariant = product.variants?.find((variant) => {
+        return (
+          variant.barcode === keyword ||
+          variant.sku?.toLowerCase() === normalizedKeyword
+        )
+      })
+
+      if (matchedVariant) {
+        addProductVariantToCart(product, matchedVariant)
+        setBarcodeInput("")
+        return
+      }
+    }
+
+    alert("Barcode / SKU tidak ditemukan")
+    setBarcodeInput("")
   }
 
   const removeItem = (targetId) => {
@@ -351,7 +412,10 @@ function POSKasir() {
   const filteredProducts = products.filter((product) => {
     const matchSearch =
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchTerm.toLowerCase())
+      product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.barcode?.includes(searchTerm)
 
     const matchCategory =
       selectedCategory === "All" || product.category === selectedCategory
@@ -361,7 +425,7 @@ function POSKasir() {
 
   return (
     <MainLayout>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="mb-1 text-sm font-medium text-blue-600">
             RAD Sport POS
@@ -372,9 +436,25 @@ function POSKasir() {
           </p>
         </div>
 
-        <button className="rounded-2xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700">
-          Scan Barcode
-        </button>
+        <form
+          onSubmit={handleBarcodeSubmit}
+          className="flex w-full max-w-md items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm"
+        >
+          <input
+            type="text"
+            value={barcodeInput}
+            onChange={(e) => setBarcodeInput(e.target.value)}
+            placeholder="Scan / input barcode..."
+            className="h-11 flex-1 rounded-xl bg-slate-100 px-4 text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-400"
+          />
+
+          <button
+            type="submit"
+            className="h-11 rounded-xl bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-700"
+          >
+            Scan
+          </button>
+        </form>
       </div>
 
       <div className="grid grid-cols-3 gap-6">
@@ -384,7 +464,7 @@ function POSKasir() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Cari produk atau scan barcode..."
+              placeholder="Cari produk, brand, SKU, atau barcode..."
               className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-5 py-4 text-sm outline-none"
             />
           </div>
