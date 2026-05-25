@@ -26,38 +26,23 @@ function StokBarang() {
     if (stock <= 0) {
       return {
         label: "Kosong",
-        className: "bg-red-50 text-red-600",
-        textClassName: "text-red-600",
+        badgeClass: "bg-red-50 text-red-600 border-red-100",
+        textClass: "text-red-600",
       }
     }
 
     if (stock <= 3) {
       return {
         label: "Menipis",
-        className: "bg-amber-50 text-amber-600",
-        textClassName: "text-amber-600",
+        badgeClass: "bg-amber-50 text-amber-600 border-amber-100",
+        textClass: "text-amber-600",
       }
     }
 
     return {
       label: "Aman",
-      className: "bg-emerald-50 text-emerald-600",
-      textClassName: "text-emerald-600",
-    }
-  }
-
-  const getVariantStockStats = (product) => {
-    const variants = product.variants || []
-
-    return {
-      total: variants.length,
-      safe: variants.filter((variant) => Number(variant.stock || 0) > 3).length,
-      low: variants.filter((variant) => {
-        const stock = Number(variant.stock || 0)
-        return stock > 0 && stock <= 3
-      }).length,
-      empty: variants.filter((variant) => Number(variant.stock || 0) <= 0)
-        .length,
+      badgeClass: "bg-emerald-50 text-emerald-600 border-emerald-100",
+      textClass: "text-emerald-600",
     }
   }
 
@@ -71,28 +56,17 @@ function StokBarang() {
     return total + getTotalStock(product)
   }, 0)
 
-  const totalLowStockProducts = products.filter((product) => {
+  const totalNeedCheck = products.filter((product) => {
     const stock = getTotalStock(product)
-    return stock > 0 && stock <= 3
+    return stock <= 3
   }).length
-
-  const totalEmptyProducts = products.filter((product) => {
-    return getTotalStock(product) <= 0
-  }).length
-
-  const stockFilters = [
-    { label: "Semua", value: "Semua" },
-    { label: "Stok Aman", value: "Aman" },
-    { label: "Stok Menipis", value: "Menipis" },
-    { label: "Stok Kosong", value: "Kosong" },
-  ]
 
   const filteredProducts = products.filter((product) => {
     const keyword = searchTerm.toLowerCase()
     const productStock = getTotalStock(product)
     const stockStatus = getStockStatus(productStock)
 
-    const matchSearch =
+    const matchProduct =
       product.name?.toLowerCase().includes(keyword) ||
       product.brand?.toLowerCase().includes(keyword) ||
       product.category?.toLowerCase().includes(keyword) ||
@@ -107,10 +81,10 @@ function StokBarang() {
       )
     })
 
-    const matchStockFilter =
+    const matchFilter =
       stockFilter === "Semua" || stockStatus.label === stockFilter
 
-    return (matchSearch || matchVariant) && matchStockFilter
+    return (matchProduct || matchVariant) && matchFilter
   })
 
   const toggleExpandProduct = (productId) => {
@@ -119,13 +93,15 @@ function StokBarang() {
     )
   }
 
+  const stockFilters = ["Semua", "Aman", "Menipis", "Kosong"]
+
   return (
     <MainLayout>
       <div className="min-h-screen">
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="mb-1 text-sm font-black uppercase tracking-wide text-blue-600">
-              Manajemen
+              Manajemen Barang
             </p>
 
             <h1 className="text-3xl font-black text-slate-900">
@@ -133,7 +109,7 @@ function StokBarang() {
             </h1>
 
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              Pantau produk, varian ukuran, SKU, barcode, harga, dan stok.
+              Cek stok produk, ukuran, SKU, dan barcode dengan cepat.
             </p>
           </div>
 
@@ -145,89 +121,83 @@ function StokBarang() {
           </button>
         </div>
 
-        <div className="mb-5 grid gap-4 md:grid-cols-4">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-bold text-slate-400">Total Produk</p>
-            <p className="mt-2 text-3xl font-black text-slate-900">
+        <div className="mb-5 grid gap-3 md:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+              Produk
+            </p>
+            <p className="mt-1 text-2xl font-black text-slate-900">
               {totalProducts}
             </p>
-            <p className="mt-1 text-xs font-semibold text-slate-400">
-              Produk utama
-            </p>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-bold text-slate-400">Total Varian</p>
-            <p className="mt-2 text-3xl font-black text-blue-600">
+          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+              Varian
+            </p>
+            <p className="mt-1 text-2xl font-black text-blue-600">
               {totalVariants}
             </p>
-            <p className="mt-1 text-xs font-semibold text-slate-400">
-              Ukuran / variasi
-            </p>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-bold text-slate-400">Total Stok</p>
-            <p className="mt-2 text-3xl font-black text-emerald-600">
+          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+              Total Stok
+            </p>
+            <p className="mt-1 text-2xl font-black text-emerald-600">
               {totalStock}
             </p>
-            <p className="mt-1 text-xs font-semibold text-slate-400">
-              Semua varian
-            </p>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-bold text-slate-400">Perlu Dicek</p>
-            <p className="mt-2 text-3xl font-black text-amber-600">
-              {totalLowStockProducts + totalEmptyProducts}
+          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+              Perlu Dicek
             </p>
-            <p className="mt-1 text-xs font-semibold text-slate-400">
-              Menipis / kosong
+            <p className="mt-1 text-2xl font-black text-amber-600">
+              {totalNeedCheck}
             </p>
           </div>
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-5 flex flex-col gap-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-xl font-black text-slate-900">
-                  Data Barang
-                </h2>
+          <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <h2 className="text-xl font-black text-slate-900">
+                Data Barang
+              </h2>
 
-                <p className="mt-1 text-sm font-semibold text-slate-400">
-                  Klik detail untuk melihat stok per ukuran.
-                </p>
-              </div>
-
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Cari nama, brand, SKU, barcode, ukuran..."
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 lg:max-w-md"
-              />
+              <p className="mt-1 text-sm font-semibold text-slate-400">
+                Klik detail untuk melihat stok per ukuran.
+              </p>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {stockFilters.map((filter) => {
-                const isActive = stockFilter === filter.value
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Cari nama barang, SKU, barcode, ukuran..."
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 xl:max-w-lg"
+            />
+          </div>
 
-                return (
-                  <button
-                    key={filter.value}
-                    onClick={() => setStockFilter(filter.value)}
-                    className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
-                      isActive
-                        ? "bg-slate-900 text-white"
-                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                    }`}
-                  >
-                    {filter.label}
-                  </button>
-                )
-              })}
-            </div>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {stockFilters.map((filter) => {
+              const isActive = stockFilter === filter
+
+              return (
+                <button
+                  key={filter}
+                  onClick={() => setStockFilter(filter)}
+                  className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
+                    isActive
+                      ? "bg-slate-900 text-white"
+                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  }`}
+                >
+                  {filter}
+                </button>
+              )
+            })}
           </div>
 
           {filteredProducts.length === 0 ? (
@@ -235,170 +205,167 @@ function StokBarang() {
               Produk tidak ditemukan
             </div>
           ) : (
-            <div className="space-y-3">
-              {filteredProducts.map((product) => {
-                const isExpanded = expandedProductId === product.id
-                const productStock = getTotalStock(product)
-                const stockStatus = getStockStatus(productStock)
-                const variantStats = getVariantStockStats(product)
+            <div className="overflow-hidden rounded-2xl border border-slate-200">
+              <div className="hidden grid-cols-[1.5fr_0.8fr_0.7fr_0.7fr_0.7fr_auto] gap-4 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400 xl:grid">
+                <span>Barang</span>
+                <span>Kategori</span>
+                <span>Harga</span>
+                <span>Varian</span>
+                <span>Stok</span>
+                <span>Aksi</span>
+              </div>
 
-                return (
-                  <div
-                    key={product.id}
-                    className="overflow-hidden rounded-3xl border border-slate-200 bg-white transition hover:border-blue-200"
-                  >
-                    <div className="grid gap-4 p-4 xl:grid-cols-[1.45fr_0.8fr_0.6fr_0.75fr_0.65fr_auto] xl:items-center">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="truncate text-base font-black text-slate-900">
-                            {product.name}
-                          </h3>
+              <div className="divide-y divide-slate-100">
+                {filteredProducts.map((product) => {
+                  const isExpanded = expandedProductId === product.id
+                  const productStock = getTotalStock(product)
+                  const stockStatus = getStockStatus(productStock)
 
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-xs font-black ${stockStatus.className}`}
-                          >
-                            {stockStatus.label}
-                          </span>
-                        </div>
+                  return (
+                    <div key={product.id} className="bg-white">
+                      <div className="grid gap-4 px-4 py-4 xl:grid-cols-[1.5fr_0.8fr_0.7fr_0.7fr_0.7fr_auto] xl:items-center">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="truncate text-base font-black text-slate-900">
+                              {product.name}
+                            </h3>
 
-                        <p className="mt-1 text-sm font-semibold text-slate-400">
-                          {product.brand || "-"} • {product.category || "-"}
-                        </p>
-
-                        <p className="mt-1 text-xs font-bold text-slate-400">
-                          SKU: {product.sku || "-"} • Barcode:{" "}
-                          {product.barcode || "-"}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs font-bold text-slate-400">
-                          Harga Jual
-                        </p>
-                        <p className="mt-1 text-sm font-black text-slate-900">
-                          {formatRupiah(product.price)}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs font-bold text-slate-400">
-                          Varian
-                        </p>
-                        <p className="mt-1 text-sm font-black text-slate-900">
-                          {product.variants?.length || 0}{" "}
-                          {product.variantType || ""}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs font-bold text-slate-400">
-                          Kondisi Varian
-                        </p>
-                        <p className="mt-1 text-xs font-black text-slate-600">
-                          {variantStats.safe} aman • {variantStats.low} menipis
-                          • {variantStats.empty} kosong
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs font-bold text-slate-400">
-                          Total Stok
-                        </p>
-                        <p
-                          className={`mt-1 text-lg font-black ${stockStatus.textClassName}`}
-                        >
-                          {productStock}
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={() => toggleExpandProduct(product.id)}
-                        className={`rounded-2xl px-4 py-2.5 text-sm font-black transition ${
-                          isExpanded
-                            ? "bg-slate-900 text-white"
-                            : "bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white"
-                        }`}
-                      >
-                        {isExpanded ? "Tutup" : "Detail"}
-                      </button>
-                    </div>
-
-                    {isExpanded && (
-                      <div className="border-t border-slate-100 bg-slate-50 p-4">
-                        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <p className="text-sm font-black text-slate-700">
-                              Detail Varian
-                            </p>
-                            <p className="text-xs font-semibold text-slate-400">
-                              Cek stok, SKU, barcode, dan harga per ukuran.
-                            </p>
+                            <span
+                              className={`rounded-full border px-2.5 py-1 text-xs font-black ${stockStatus.badgeClass}`}
+                            >
+                              {stockStatus.label}
+                            </span>
                           </div>
 
-                          <p className="text-xs font-black text-slate-400">
-                            {product.variantType || "Varian"}
+                          <p className="mt-1 text-sm font-semibold text-slate-500">
+                            {product.brand || "-"}
+                          </p>
+
+                          <p className="mt-1 text-xs font-bold text-slate-400">
+                            SKU: {product.sku || "-"}
+                          </p>
+
+                          <p className="mt-0.5 text-xs font-bold text-slate-400">
+                            Barcode: {product.barcode || "-"}
                           </p>
                         </div>
 
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                          {product.variants?.map((variant) => {
-                            const variantStock = Number(variant.stock || 0)
-                            const variantStatus = getStockStatus(variantStock)
+                        <div>
+                          <p className="text-xs font-bold text-slate-400 xl:hidden">
+                            Kategori
+                          </p>
+                          <p className="text-sm font-black text-slate-700">
+                            {product.category || "-"}
+                          </p>
+                        </div>
 
-                            return (
-                              <div
-                                key={variant.id || variant.value}
-                                className="rounded-2xl border border-slate-200 bg-white p-4"
-                              >
-                                <div className="mb-3 flex items-center justify-between gap-3">
-                                  <div>
-                                    <p className="text-xs font-bold text-slate-400">
-                                      {product.variantType || "Varian"}
-                                    </p>
+                        <div>
+                          <p className="text-xs font-bold text-slate-400 xl:hidden">
+                            Harga
+                          </p>
+                          <p className="text-sm font-black text-slate-900">
+                            {formatRupiah(product.price)}
+                          </p>
+                        </div>
 
-                                    <p className="text-2xl font-black text-slate-900">
-                                      {variant.value}
-                                    </p>
-                                  </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-400 xl:hidden">
+                            Varian
+                          </p>
+                          <p className="text-sm font-black text-slate-700">
+                            {product.variants?.length || 0}{" "}
+                            {product.variantType || ""}
+                          </p>
+                        </div>
 
-                                  <span
-                                    className={`rounded-full px-3 py-1 text-xs font-black ${variantStatus.className}`}
+                        <div>
+                          <p className="text-xs font-bold text-slate-400 xl:hidden">
+                            Total Stok
+                          </p>
+                          <p
+                            className={`text-lg font-black ${stockStatus.textClass}`}
+                          >
+                            {productStock}
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => toggleExpandProduct(product.id)}
+                          className={`w-full rounded-2xl px-4 py-2.5 text-sm font-black transition xl:w-auto ${
+                            isExpanded
+                              ? "bg-slate-900 text-white"
+                              : "bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white"
+                          }`}
+                        >
+                          {isExpanded ? "Tutup" : "Detail"}
+                        </button>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
+                          <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <p className="text-sm font-black text-slate-800">
+                                Stok Per {product.variantType || "Varian"}
+                              </p>
+                              <p className="text-xs font-semibold text-slate-400">
+                                Data ini dipakai untuk cek stok dan stok opname.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                            <div className="grid grid-cols-[0.5fr_0.5fr_1.2fr_1.2fr_0.8fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400">
+                              <span>Ukuran</span>
+                              <span>Stok</span>
+                              <span>SKU</span>
+                              <span>Barcode</span>
+                              <span className="text-right">Harga</span>
+                            </div>
+
+                            <div className="divide-y divide-slate-100">
+                              {product.variants?.map((variant) => {
+                                const variantStock = Number(variant.stock || 0)
+                                const variantStatus =
+                                  getStockStatus(variantStock)
+
+                                return (
+                                  <div
+                                    key={variant.id || variant.value}
+                                    className="grid grid-cols-[0.5fr_0.5fr_1.2fr_1.2fr_0.8fr] gap-3 px-4 py-3 text-sm font-bold text-slate-700"
                                   >
-                                    Stok {variantStock}
-                                  </span>
-                                </div>
+                                    <span className="font-black text-slate-900">
+                                      {variant.value}
+                                    </span>
 
-                                <div className="space-y-1.5 text-xs font-semibold text-slate-500">
-                                  <div className="flex justify-between gap-3">
-                                    <span>SKU</span>
-                                    <span className="text-right text-slate-700">
+                                    <span
+                                      className={`font-black ${variantStatus.textClass}`}
+                                    >
+                                      {variantStock}
+                                    </span>
+
+                                    <span className="break-all text-xs text-slate-500">
                                       {variant.sku || "-"}
                                     </span>
-                                  </div>
 
-                                  <div className="flex justify-between gap-3">
-                                    <span>Barcode</span>
-                                    <span className="text-right text-slate-700">
+                                    <span className="break-all text-xs text-slate-500">
                                       {variant.barcode || "-"}
                                     </span>
-                                  </div>
 
-                                  <div className="flex justify-between gap-3">
-                                    <span>Harga</span>
-                                    <span className="text-right font-black text-slate-900">
+                                    <span className="text-right text-xs font-black text-slate-900">
                                       {formatRupiah(variant.price)}
                                     </span>
                                   </div>
-                                </div>
-                              </div>
-                            )
-                          })}
+                                )
+                              })}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
         </div>
