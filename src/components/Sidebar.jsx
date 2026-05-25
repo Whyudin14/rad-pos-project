@@ -4,9 +4,9 @@ const menuItems = [
   { name: "Dashboard", icon: "🏠", path: "/" },
   { name: "Produk", icon: "👟" },
   { name: "Kategori", icon: "🏷️" },
-  { name: "Stok Barang", icon: "📦" },
+  { name: "Stok Barang", icon: "📦", path: "/stok-barang" },
   { name: "POS / Kasir", icon: "🧾", path: "/kasir" },
-  { name: "Riwayat Penjualan", icon: "📊" },
+  { name: "Riwayat Penjualan", icon: "📊", path: "/riwayat-transaksi" },
   { name: "Settlement", icon: "💰" },
   { name: "Pengaturan", icon: "⚙️" },
 ]
