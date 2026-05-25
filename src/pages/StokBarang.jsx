@@ -426,7 +426,7 @@ function StokBarang() {
                               Stok Per {product.variantType || "Varian"}
                             </p>
                             <p className="text-xs font-semibold text-slate-400">
-                              Data ini dipakai untuk cek stok dan stok opname.
+                              Fokus utama tabel ini adalah stok fisik per ukuran untuk membantu proses stok opname.
                             </p>
                           </div>
 
@@ -493,9 +493,10 @@ function StokBarang() {
                           </div>
 
                           <div className="mt-3 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-bold text-blue-600">
-                            Catatan: status stok mengikuti stok minimum produk.
-                            Nanti jika minimum stok per ukuran sudah dibuat,
-                            status ukuran bisa dihitung lebih akurat.
+                            Catatan: warna dan status stok tetap dihitung dari
+                            stok minimum masing-masing ukuran, tapi angka minimum
+                            tidak ditampilkan di tabel agar staff gudang fokus
+                            pada stok fisik saat stok opname.
                           </div>
                         </div>
                       )}
