@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import MainLayout from "../layouts/MainLayout"
 import { products } from "../data/dummyProducts"
 
@@ -13,8 +13,31 @@ function StokBarang() {
   const [opnameNote, setOpnameNote] = useState("")
   const [showOpnameSuccess, setShowOpnameSuccess] = useState(false)
 
+  const [showOpnameHistory, setShowOpnameHistory] = useState(false)
+  const [stockOpnameHistory, setStockOpnameHistory] = useState([])
+
+  useEffect(() => {
+    const storedHistory = JSON.parse(
+      localStorage.getItem("stockOpnameHistory") || "[]"
+    )
+
+    setStockOpnameHistory(storedHistory)
+  }, [])
+
   const formatRupiah = (number) => {
     return `Rp ${Number(number || 0).toLocaleString("id-ID")}`
+  }
+
+  const formatDateTime = (date) => {
+    if (!date) return "-"
+
+    return new Date(date).toLocaleString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
   }
 
   const getTotalStock = (product) => {
@@ -56,6 +79,35 @@ function StokBarang() {
       badgeClass: "bg-emerald-50 text-emerald-600 border-emerald-100",
       textClass: "text-emerald-600",
     }
+  }
+
+  const getOpnameStatusClass = (status) => {
+    if (status === "Sesuai") {
+      return "bg-emerald-50 text-emerald-600 border-emerald-100"
+    }
+
+    if (status === "Lebih") {
+      return "bg-blue-50 text-blue-600 border-blue-100"
+    }
+
+    return "bg-red-50 text-red-600 border-red-100"
+  }
+
+  const getDifferenceClass = (difference) => {
+    const numericDifference = Number(difference || 0)
+
+    if (numericDifference === 0) return "text-emerald-600"
+    if (numericDifference > 0) return "text-blue-600"
+
+    return "text-red-600"
+  }
+
+  const formatDifference = (difference) => {
+    const numericDifference = Number(difference || 0)
+
+    if (numericDifference > 0) return `+${numericDifference}`
+
+    return numericDifference
   }
 
   const getVariantMinimumStock = (product, variant) => {
@@ -185,10 +237,10 @@ function StokBarang() {
       localStorage.getItem("stockOpnameHistory") || "[]"
     )
 
-    localStorage.setItem(
-      "stockOpnameHistory",
-      JSON.stringify([opnameData, ...existingHistory])
-    )
+    const updatedHistory = [opnameData, ...existingHistory]
+
+    localStorage.setItem("stockOpnameHistory", JSON.stringify(updatedHistory))
+    setStockOpnameHistory(updatedHistory)
 
     setShowOpnameSuccess(true)
 
@@ -222,12 +274,21 @@ function StokBarang() {
             </p>
           </div>
 
-          <button
-            onClick={() => setShowComingSoon(true)}
-            className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700"
-          >
-            + Tambah Produk
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              onClick={() => setShowOpnameHistory(true)}
+              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-700"
+            >
+              Riwayat SO
+            </button>
+
+            <button
+              onClick={() => setShowComingSoon(true)}
+              className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700"
+            >
+              + Tambah Produk
+            </button>
+          </div>
         </div>
 
         <div className="mb-5 grid gap-3 md:grid-cols-4">
@@ -579,7 +640,10 @@ function StokBarang() {
                                       <span className="text-right">
                                         <button
                                           onClick={() =>
-                                            openStockOpnameModal(product, variant)
+                                            openStockOpnameModal(
+                                              product,
+                                              variant
+                                            )
                                           }
                                           className="rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-black text-white transition hover:bg-slate-700"
                                         >
@@ -765,6 +829,110 @@ function StokBarang() {
                   Simpan SO
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {showOpnameHistory && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-3xl bg-white p-6 shadow-2xl">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-wide text-blue-600">
+                    Riwayat
+                  </p>
+
+                  <h3 className="mt-1 text-2xl font-black text-slate-900">
+                    Riwayat Stok Opname
+                  </h3>
+
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Data pencatatan SO tersimpan sementara di localStorage.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowOpnameHistory(false)}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {stockOpnameHistory.length === 0 ? (
+                <div className="flex h-64 items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 text-sm font-bold text-slate-400">
+                  Belum ada riwayat stok opname
+                </div>
+              ) : (
+                <div className="overflow-auto rounded-2xl border border-slate-200">
+                  <div className="min-w-[980px]">
+                    <div className="grid grid-cols-[0.9fr_1.2fr_0.5fr_0.5fr_0.5fr_0.5fr_0.6fr_1.4fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400">
+                      <span>Tanggal</span>
+                      <span>Barang</span>
+                      <span>Ukuran</span>
+                      <span>Sistem</span>
+                      <span>Fisik</span>
+                      <span>Selisih</span>
+                      <span>Status</span>
+                      <span>Catatan</span>
+                    </div>
+
+                    <div className="divide-y divide-slate-100">
+                      {stockOpnameHistory.map((item) => {
+                        return (
+                          <div
+                            key={item.id}
+                            className="grid grid-cols-[0.9fr_1.2fr_0.5fr_0.5fr_0.5fr_0.5fr_0.6fr_1.4fr] gap-3 px-4 py-3 text-sm font-bold text-slate-700"
+                          >
+                            <span className="text-xs text-slate-500">
+                              {formatDateTime(item.date)}
+                            </span>
+
+                            <span>
+                              <span className="block font-black text-slate-900">
+                                {item.productName}
+                              </span>
+                              <span className="block break-all text-xs text-slate-400">
+                                {item.sku || "-"}
+                              </span>
+                            </span>
+
+                            <span className="font-black text-slate-900">
+                              {item.variantValue}
+                            </span>
+
+                            <span>{item.systemStock}</span>
+
+                            <span>{item.physicalStock}</span>
+
+                            <span
+                              className={`font-black ${getDifferenceClass(
+                                item.difference
+                              )}`}
+                            >
+                              {formatDifference(item.difference)}
+                            </span>
+
+                            <span>
+                              <span
+                                className={`inline-flex rounded-full border px-2 py-1 text-xs font-black ${getOpnameStatusClass(
+                                  item.status
+                                )}`}
+                              >
+                                {item.status}
+                              </span>
+                            </span>
+
+                            <span className="text-xs font-semibold leading-relaxed text-slate-500">
+                              {item.note || "-"}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
