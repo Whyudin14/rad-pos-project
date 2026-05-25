@@ -16,6 +16,7 @@ function StokBarang() {
   const [showOpnameHistory, setShowOpnameHistory] = useState(false)
   const [stockOpnameHistory, setStockOpnameHistory] = useState([])
   const [opnameHistoryFilter, setOpnameHistoryFilter] = useState("Semua")
+  const [opnameHistorySearch, setOpnameHistorySearch] = useState("")
 
   useEffect(() => {
     const storedHistory = JSON.parse(
@@ -250,6 +251,21 @@ function StokBarang() {
     }, 900)
   }
 
+  const deleteStockOpnameHistory = (historyId) => {
+    const confirmDelete = window.confirm(
+      "Hapus riwayat stok opname ini? Data yang sudah dihapus tidak bisa dikembalikan."
+    )
+
+    if (!confirmDelete) return
+
+    const updatedHistory = stockOpnameHistory.filter((item) => {
+      return item.id !== historyId
+    })
+
+    localStorage.setItem("stockOpnameHistory", JSON.stringify(updatedHistory))
+    setStockOpnameHistory(updatedHistory)
+  }
+
   const stockFilters = ["Semua", "Aman", "Menipis", "Kosong"]
 
   const selectedSystemStock = Number(selectedStockOpname?.systemStock || 0)
@@ -260,7 +276,23 @@ function StokBarang() {
   const opnameHistoryFilters = ["Semua", "Sesuai", "Lebih", "Kurang"]
 
   const filteredStockOpnameHistory = stockOpnameHistory.filter((item) => {
-    return opnameHistoryFilter === "Semua" || item.status === opnameHistoryFilter
+    const keyword = opnameHistorySearch.toLowerCase()
+
+    const matchStatus =
+      opnameHistoryFilter === "Semua" || item.status === opnameHistoryFilter
+
+    const matchSearch =
+      item.productName?.toLowerCase().includes(keyword) ||
+      item.brand?.toLowerCase().includes(keyword) ||
+      item.category?.toLowerCase().includes(keyword) ||
+      item.variantValue?.toString().toLowerCase().includes(keyword) ||
+      item.sku?.toLowerCase().includes(keyword) ||
+      item.barcode?.toString().includes(opnameHistorySearch) ||
+      item.rackLocation?.toLowerCase().includes(keyword) ||
+      item.note?.toLowerCase().includes(keyword) ||
+      item.status?.toLowerCase().includes(keyword)
+
+    return matchStatus && matchSearch
   })
 
   const totalOpnameHistory = stockOpnameHistory.length
@@ -868,7 +900,8 @@ function StokBarang() {
                   </h3>
 
                   <p className="mt-1 text-sm font-semibold text-slate-500">
-                    Data pencatatan SO tersimpan sementara di localStorage.
+                    Cari riwayat berdasarkan nama barang, SKU, barcode, ukuran,
+                    rak, status, atau catatan.
                   </p>
                 </div>
 
@@ -918,24 +951,34 @@ function StokBarang() {
                 </div>
               </div>
 
-              <div className="mb-4 flex flex-wrap gap-2">
-                {opnameHistoryFilters.map((filter) => {
-                  const isActive = opnameHistoryFilter === filter
+              <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex flex-wrap gap-2">
+                  {opnameHistoryFilters.map((filter) => {
+                    const isActive = opnameHistoryFilter === filter
 
-                  return (
-                    <button
-                      key={filter}
-                      onClick={() => setOpnameHistoryFilter(filter)}
-                      className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
-                        isActive
-                          ? "bg-slate-900 text-white"
-                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                      }`}
-                    >
-                      {filter}
-                    </button>
-                  )
-                })}
+                    return (
+                      <button
+                        key={filter}
+                        onClick={() => setOpnameHistoryFilter(filter)}
+                        className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
+                          isActive
+                            ? "bg-slate-900 text-white"
+                            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        }`}
+                      >
+                        {filter}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <input
+                  type="text"
+                  value={opnameHistorySearch}
+                  onChange={(e) => setOpnameHistorySearch(e.target.value)}
+                  placeholder="Cari riwayat SO..."
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 xl:max-w-md"
+                />
               </div>
 
               {stockOpnameHistory.length === 0 ? (
@@ -944,12 +987,12 @@ function StokBarang() {
                 </div>
               ) : filteredStockOpnameHistory.length === 0 ? (
                 <div className="flex h-64 items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 text-sm font-bold text-slate-400">
-                  Tidak ada riwayat dengan status {opnameHistoryFilter}
+                  Riwayat SO tidak ditemukan
                 </div>
               ) : (
                 <div className="overflow-auto rounded-2xl border border-slate-200">
-                  <div className="min-w-[980px]">
-                    <div className="grid grid-cols-[0.9fr_1.2fr_0.5fr_0.5fr_0.5fr_0.5fr_0.6fr_1.4fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400">
+                  <div className="min-w-[1080px]">
+                    <div className="grid grid-cols-[0.9fr_1.2fr_0.5fr_0.5fr_0.5fr_0.5fr_0.6fr_1.3fr_0.5fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400">
                       <span>Tanggal</span>
                       <span>Barang</span>
                       <span>Ukuran</span>
@@ -958,6 +1001,7 @@ function StokBarang() {
                       <span>Selisih</span>
                       <span>Status</span>
                       <span>Catatan</span>
+                      <span className="text-right">Aksi</span>
                     </div>
 
                     <div className="divide-y divide-slate-100">
@@ -965,7 +1009,7 @@ function StokBarang() {
                         return (
                           <div
                             key={item.id}
-                            className="grid grid-cols-[0.9fr_1.2fr_0.5fr_0.5fr_0.5fr_0.5fr_0.6fr_1.4fr] gap-3 px-4 py-3 text-sm font-bold text-slate-700"
+                            className="grid grid-cols-[0.9fr_1.2fr_0.5fr_0.5fr_0.5fr_0.5fr_0.6fr_1.3fr_0.5fr] gap-3 px-4 py-3 text-sm font-bold text-slate-700"
                           >
                             <span className="text-xs text-slate-500">
                               {formatDateTime(item.date)}
@@ -977,6 +1021,9 @@ function StokBarang() {
                               </span>
                               <span className="block break-all text-xs text-slate-400">
                                 {item.sku || "-"}
+                              </span>
+                              <span className="block text-xs text-slate-400">
+                                Rak: {item.rackLocation || "-"}
                               </span>
                             </span>
 
@@ -1008,6 +1055,17 @@ function StokBarang() {
 
                             <span className="text-xs font-semibold leading-relaxed text-slate-500">
                               {item.note || "-"}
+                            </span>
+
+                            <span className="text-right">
+                              <button
+                                onClick={() =>
+                                  deleteStockOpnameHistory(item.id)
+                                }
+                                className="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-black text-red-600 transition hover:bg-red-100"
+                              >
+                                Hapus
+                              </button>
                             </span>
                           </div>
                         )
