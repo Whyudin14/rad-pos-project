@@ -375,6 +375,10 @@ function StokBarang() {
     ? getSessionSummary(activeStockOpnameSession)
     : null
 
+  const activeSessionProgress = activeStockOpnameSession
+    ? getSessionProgressData(activeStockOpnameSession, stockOpnameHistory)
+    : getEmptySessionProgress()
+
   const selectedSystemStock = Number(selectedStockOpname?.systemStock || 0)
   const selectedPhysicalStock = Number(physicalStock || 0)
   const selectedDifference =
@@ -718,26 +722,49 @@ function StokBarang() {
               )}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[360px]">
-              <div className="rounded-2xl bg-slate-50 p-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[520px] xl:grid-cols-4">
+              <ProgressCard
+                label="Target Item"
+                value={activeSessionProgress.targetTotal}
+                color="slate"
+              />
+              <ProgressCard
+                label="Sudah Dicek"
+                value={activeSessionProgress.checkedTotal}
+                color="blue"
+              />
+              <ProgressCard
+                label="Belum Dicek"
+                value={activeSessionProgress.uncheckedTotal}
+                color="amber"
+              />
+              <ProgressCard
+                label="Progress"
+                value={`${activeSessionProgress.progressPercent}%`}
+                color="emerald"
+              />
+            </div>
+          </div>
+
+          {activeStockOpnameSession && (
+            <div className="mt-4 rounded-2xl bg-slate-50 p-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
                 <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                  Total Sesi
+                  Progress Sesi Aktif
                 </p>
-                <p className="mt-1 text-2xl font-black text-slate-900">
-                  {stockOpnameSessions.length}
+                <p className="text-xs font-black text-emerald-600">
+                  {activeSessionProgress.checkedTotal} / {activeSessionProgress.targetTotal} item
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-blue-50 p-4">
-                <p className="text-xs font-black uppercase tracking-wide text-blue-500">
-                  Item Dicek Sesi Ini
-                </p>
-                <p className="mt-1 text-2xl font-black text-blue-600">
-                  {activeSessionCheckedItems}
-                </p>
+              <div className="h-3 overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full rounded-full bg-emerald-500 transition-all"
+                  style={{ width: `${activeSessionProgress.progressPercent}%` }}
+                />
               </div>
             </div>
-          </div>
+          )}
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <button
@@ -1040,12 +1067,14 @@ function StokBarang() {
           <ActiveSessionResultModal
             activeSessionSummary={activeSessionSummary}
             activeStockOpnameSession={activeStockOpnameSession}
+            activeSessionProgress={activeSessionProgress}
             formatDateTime={formatDateTime}
             getOpnameStatusClass={getOpnameStatusClass}
             getDifferenceClass={getDifferenceClass}
             formatDifference={formatDifference}
             deleteStockOpnameHistory={deleteStockOpnameHistory}
             openEditStockOpnameModal={openEditStockOpnameModal}
+            openStockOpnameModal={openStockOpnameModal}
             onClose={() => setShowActiveSessionResult(false)}
           />
         )}
@@ -1126,6 +1155,107 @@ function getBrandFilters(items) {
 function filterItemsByBrand(items, brandFilter) {
   if (brandFilter === "Semua Brand") return items
   return items.filter((item) => item.brand === brandFilter)
+}
+
+function getEmptySessionProgress() {
+  return {
+    targetItems: [],
+    checkedItems: [],
+    uncheckedItems: [],
+    targetTotal: 0,
+    checkedTotal: 0,
+    uncheckedTotal: 0,
+    progressPercent: 0,
+  }
+}
+
+function getSessionProgressData(session, historyItems) {
+  if (!session) return getEmptySessionProgress()
+
+  const targetItems = products.flatMap((product) => {
+    if (!session.categories?.includes(product.category)) return []
+
+    const variants = product.variants?.length
+      ? product.variants
+      : [
+          {
+            id: `${product.id}-default`,
+            value: "-",
+            sku: product.sku,
+            barcode: product.barcode,
+            stock: product.stock,
+            price: product.price,
+          },
+        ]
+
+    return variants.map((variant) => ({
+      id: getOpnameItemKey({
+        productId: product.id,
+        variantId: variant.id,
+        variantValue: variant.value,
+        sku: variant.sku,
+        barcode: variant.barcode,
+      }),
+      product,
+      variant,
+      productId: product.id,
+      productName: product.name,
+      brand: product.brand,
+      category: product.category,
+      rackLocation: product.rackLocation,
+      variantId: variant.id,
+      variantValue: variant.value,
+      sku: variant.sku,
+      barcode: variant.barcode,
+      systemStock: Number(variant.stock || 0),
+    }))
+  })
+
+  const checkedItems = historyItems.filter((item) => item.sessionId === session.id)
+  const checkedKeys = new Set(checkedItems.map((item) => getOpnameItemKey(item)))
+  const checkedTargetItems = targetItems.filter((item) => checkedKeys.has(item.id))
+  const uncheckedItems = targetItems.filter((item) => !checkedKeys.has(item.id))
+  const targetTotal = targetItems.length
+  const checkedTotal = checkedTargetItems.length
+  const uncheckedTotal = uncheckedItems.length
+  const progressPercent = targetTotal
+    ? Math.round((checkedTotal / targetTotal) * 100)
+    : 0
+
+  return {
+    targetItems,
+    checkedItems,
+    uncheckedItems,
+    targetTotal,
+    checkedTotal,
+    uncheckedTotal,
+    progressPercent,
+  }
+}
+
+function getOpnameItemKey(item) {
+  return [
+    item.productId || "-",
+    item.variantId || item.variantValue || item.sku || item.barcode || "-",
+  ].join("::")
+}
+
+function ProgressCard({ label, value, color }) {
+  const style = {
+    slate: "bg-slate-50 text-slate-900",
+    blue: "bg-blue-50 text-blue-600",
+    emerald: "bg-emerald-50 text-emerald-600",
+    amber: "bg-amber-50 text-amber-600",
+  }
+
+  return (
+    <div className={`rounded-2xl p-4 ${style[color]}`}>
+      <p className="text-xs font-black uppercase tracking-wide opacity-70">
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-black">{value}</p>
+    </div>
+  )
 }
 
 function SummaryCard({ label, value, color }) {
@@ -1679,25 +1809,35 @@ function OpnameHistoryModal({
 function ActiveSessionResultModal({
   activeSessionSummary,
   activeStockOpnameSession,
+  activeSessionProgress,
   formatDateTime,
   getOpnameStatusClass,
   getDifferenceClass,
   formatDifference,
   deleteStockOpnameHistory,
   openEditStockOpnameModal,
+  openStockOpnameModal,
   onClose,
 }) {
   const [brandFilter, setBrandFilter] = useState("Semua Brand")
+  const [resultTab, setResultTab] = useState("Sudah Dicek")
+
   const sessionItems = activeSessionSummary?.items || []
-  const brandFilters = getBrandFilters(sessionItems)
-  const filteredItems = filterItemsByBrand(sessionItems, brandFilter)
+  const targetItems = activeSessionProgress?.targetItems || []
+  const uncheckedItems = activeSessionProgress?.uncheckedItems || []
+  const brandFilters = getBrandFilters(targetItems)
+
+  const checkedFilteredItems = filterItemsByBrand(sessionItems, brandFilter)
+  const uncheckedFilteredItems = filterItemsByBrand(uncheckedItems, brandFilter)
+  const displayedItems =
+    resultTab === "Sudah Dicek" ? checkedFilteredItems : uncheckedFilteredItems
 
   return (
     <ModalWrapper maxWidth="max-w-7xl" tall>
       <ModalHeader
         eyebrow="Sesi Aktif"
         title="Hasil SO Sesi Ini"
-        description="Dipakai staff gudang untuk melihat item yang sudah dicek pada sesi aktif."
+        description="Dipakai staff gudang untuk melihat progress, item yang sudah dicek, dan item yang belum dicek pada sesi aktif."
         color="blue"
         onClose={onClose}
       />
@@ -1707,44 +1847,234 @@ function ActiveSessionResultModal({
           <EmptyModalState text="Belum ada sesi SO aktif. Buat sesi SO dulu untuk mulai pengecekan stok." />
         ) : (
           <>
-            <SessionDetailHeader
-              eyebrow="Sesi SO Aktif"
-              title={activeStockOpnameSession.name}
-              subtitle={`${activeStockOpnameSession.scheduleDay} • ${activeStockOpnameSession.type} • Aktif`}
-              timeText={`Mulai: ${formatDateTime(activeStockOpnameSession.createdAt)}`}
-              note={activeStockOpnameSession.note}
-              items={filteredItems}
+            <SessionProgressHeader
+              activeStockOpnameSession={activeStockOpnameSession}
+              activeSessionProgress={activeSessionProgress}
+              formatDateTime={formatDateTime}
             />
 
-            <BrandFilterPanel
-              brandFilters={brandFilters}
-              brandFilter={brandFilter}
-              setBrandFilter={setBrandFilter}
-              shownCount={filteredItems.length}
-              totalCount={sessionItems.length}
-              color="blue"
-            />
+            <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-3">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <div>
+                  <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-slate-400">
+                    Status Cek
+                  </p>
 
-            {sessionItems.length === 0 ? (
-              <EmptyModalState text="Belum ada item yang dicek pada sesi aktif ini" />
-            ) : filteredItems.length === 0 ? (
-              <EmptyModalState text="Tidak ada item untuk brand yang dipilih" />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setResultTab("Sudah Dicek")}
+                      className={`rounded-xl px-4 py-2 text-xs font-black transition ${
+                        resultTab === "Sudah Dicek"
+                          ? "bg-emerald-600 text-white"
+                          : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                      }`}
+                    >
+                      Sudah Dicek
+                    </button>
+
+                    <button
+                      onClick={() => setResultTab("Belum Dicek")}
+                      className={`rounded-xl px-4 py-2 text-xs font-black transition ${
+                        resultTab === "Belum Dicek"
+                          ? "bg-amber-500 text-white"
+                          : "bg-amber-50 text-amber-600 hover:bg-amber-100"
+                      }`}
+                    >
+                      Belum Dicek
+                    </button>
+                  </div>
+                </div>
+
+                <div className="xl:flex-1 xl:max-w-xl">
+                  <FilterGroup
+                    label="Filter Brand"
+                    filters={brandFilters}
+                    value={brandFilter}
+                    onChange={setBrandFilter}
+                    activeClass="bg-slate-900 text-white"
+                    inactiveClass="bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  />
+                </div>
+              </div>
+
+              <p className="mt-2 text-xs font-bold text-slate-500">
+                Menampilkan {displayedItems.length} item dari tab {resultTab}.
+              </p>
+            </div>
+
+            {resultTab === "Sudah Dicek" ? (
+              sessionItems.length === 0 ? (
+                <EmptyModalState text="Belum ada item yang dicek pada sesi aktif ini" />
+              ) : checkedFilteredItems.length === 0 ? (
+                <EmptyModalState text="Tidak ada item yang sudah dicek untuk brand yang dipilih" />
+              ) : (
+                <OpnameHistoryTable
+                  items={checkedFilteredItems}
+                  formatDateTime={formatDateTime}
+                  getOpnameStatusClass={getOpnameStatusClass}
+                  getDifferenceClass={getDifferenceClass}
+                  formatDifference={formatDifference}
+                  deleteStockOpnameHistory={deleteStockOpnameHistory}
+                  openEditStockOpnameModal={openEditStockOpnameModal}
+                  showAction
+                />
+              )
+            ) : targetItems.length === 0 ? (
+              <EmptyModalState text="Tidak ada target item pada sesi aktif ini" />
+            ) : uncheckedFilteredItems.length === 0 ? (
+              <EmptyModalState text="Semua item untuk brand yang dipilih sudah dicek" />
             ) : (
-              <OpnameHistoryTable
-                items={filteredItems}
-                formatDateTime={formatDateTime}
-                getOpnameStatusClass={getOpnameStatusClass}
-                getDifferenceClass={getDifferenceClass}
-                formatDifference={formatDifference}
-                deleteStockOpnameHistory={deleteStockOpnameHistory}
-                openEditStockOpnameModal={openEditStockOpnameModal}
-                showAction
+              <UncheckedTargetTable
+                items={uncheckedFilteredItems}
+                openStockOpnameModal={openStockOpnameModal}
               />
             )}
           </>
         )}
       </div>
     </ModalWrapper>
+  )
+}
+
+function SessionProgressHeader({
+  activeStockOpnameSession,
+  activeSessionProgress,
+  formatDateTime,
+}) {
+  return (
+    <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-black uppercase tracking-wide text-blue-600">
+              Sesi SO Aktif
+            </p>
+
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-600">
+              {activeSessionProgress.progressPercent}% selesai
+            </span>
+          </div>
+
+          <h4 className="mt-1 truncate text-xl font-black text-slate-900">
+            {activeStockOpnameSession.name}
+          </h4>
+
+          <p className="mt-1 text-xs font-bold text-slate-500">
+            {activeStockOpnameSession.scheduleDay} • {activeStockOpnameSession.type} • Mulai: {formatDateTime(activeStockOpnameSession.createdAt)}
+          </p>
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-4 xl:min-w-[520px]">
+          <CompactProgressStat label="Target" value={activeSessionProgress.targetTotal} />
+          <CompactProgressStat
+            label="Sudah"
+            value={activeSessionProgress.checkedTotal}
+            color="emerald"
+          />
+          <CompactProgressStat
+            label="Belum"
+            value={activeSessionProgress.uncheckedTotal}
+            color="amber"
+          />
+          <CompactProgressStat
+            label="Progress"
+            value={`${activeSessionProgress.progressPercent}%`}
+            color="blue"
+          />
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <p className="text-[11px] font-black uppercase tracking-wide text-slate-400">
+            Progress
+          </p>
+          <p className="text-[11px] font-black text-emerald-600">
+            {activeSessionProgress.checkedTotal} / {activeSessionProgress.targetTotal} item
+          </p>
+        </div>
+
+        <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+          <div
+            className="h-full rounded-full bg-emerald-500 transition-all"
+            style={{ width: `${activeSessionProgress.progressPercent}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CompactProgressStat({ label, value, color = "slate" }) {
+  const style = {
+    slate: "border-slate-200 bg-white text-slate-900",
+    emerald: "border-emerald-100 bg-emerald-50 text-emerald-600",
+    amber: "border-amber-100 bg-amber-50 text-amber-600",
+    blue: "border-blue-100 bg-blue-50 text-blue-600",
+    red: "border-red-100 bg-red-50 text-red-600",
+  }
+
+  return (
+    <div className={`rounded-xl border px-3 py-2 shadow-sm ${style[color]}`}>
+      <p className="text-[10px] font-black uppercase tracking-wide opacity-70">
+        {label}
+      </p>
+      <p className="mt-0.5 text-xl font-black">{value}</p>
+    </div>
+  )
+}
+
+function UncheckedTargetTable({ items, openStockOpnameModal }) {
+  return (
+    <div className="flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white">
+      <div className="hidden grid-cols-[1.4fr_0.7fr_0.45fr_0.45fr_1fr_1fr_0.65fr_0.4fr] gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-400 xl:grid">
+        <span>Barang</span>
+        <span>Kategori</span>
+        <span>Ukuran</span>
+        <span>Sistem</span>
+        <span>SKU</span>
+        <span>Barcode</span>
+        <span>Rak</span>
+        <span className="text-right">Aksi</span>
+      </div>
+
+      <div className="divide-y divide-slate-100">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="grid gap-3 px-4 py-3 text-sm font-bold text-slate-700 xl:grid-cols-[1.4fr_0.7fr_0.45fr_0.45fr_1fr_1fr_0.65fr_0.4fr] xl:items-start"
+          >
+            <div className="min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-wide text-slate-400 xl:hidden">
+                Barang
+              </p>
+              <p className="truncate text-sm font-black text-slate-900">
+                {item.productName}
+              </p>
+              <p className="mt-0.5 truncate text-xs font-bold text-slate-500">
+                Brand: {item.brand || "-"}
+              </p>
+            </div>
+
+            <SessionTableText label="Kategori" value={item.category || "-"} />
+            <SessionTableText label="Ukuran" value={item.variantValue || "-"} strong />
+            <SessionTableText label="Sistem" value={item.systemStock} strong />
+            <SessionTableText label="SKU" value={item.sku || "-"} small />
+            <SessionTableText label="Barcode" value={item.barcode || "-"} small />
+            <SessionTableText label="Rak" value={item.rackLocation || "-"} small />
+
+            <div className="flex xl:justify-end">
+              <button
+                onClick={() => openStockOpnameModal(item.product, item.variant)}
+                className="rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-black text-white transition hover:bg-slate-700"
+              >
+                SO
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -1999,68 +2329,76 @@ function SessionDetail({
 
   return (
     <>
-      <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <button
-            onClick={() => setSelectedSessionSummary(null)}
-            className="mb-3 rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-100"
-          >
-            ← Kembali ke daftar sesi
-          </button>
+      <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0">
+            <button
+              onClick={() => setSelectedSessionSummary(null)}
+              className="mb-2 rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-100"
+            >
+              ← Kembali ke daftar sesi
+            </button>
 
-          <p className="text-xs font-black uppercase tracking-wide text-emerald-600">
-            Detail Sesi SO
-          </p>
-
-          <h4 className="mt-1 text-2xl font-black text-slate-900">
-            {selectedSessionSummary.name}
-          </h4>
-
-          <p className="mt-1 text-sm font-semibold text-slate-500">
-            {selectedSessionSummary.scheduleDay} • {selectedSessionSummary.type}{" "}
-            • {selectedSessionSummary.status}
-          </p>
-
-          <p className="mt-1 text-xs font-bold text-slate-400">
-            Mulai: {formatDateTime(selectedSessionSummary.createdAt)} • Selesai:{" "}
-            {formatDateTime(selectedSessionSummary.finishedAt)}
-          </p>
-
-          {selectedSessionSummary.note && (
-            <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-500">
-              Catatan: {selectedSessionSummary.note}
+            <p className="text-xs font-black uppercase tracking-wide text-emerald-600">
+              Detail Sesi SO
             </p>
-          )}
-        </div>
 
-        <div className="grid gap-2 sm:grid-cols-4 lg:min-w-[460px]">
-          <MiniSummary label="Ditampilkan" value={filteredItems.length} />
-          <MiniSummary
-            label="Sesuai"
-            value={countByStatus(filteredItems, "Sesuai")}
-            color="emerald"
-          />
-          <MiniSummary
-            label="Lebih"
-            value={countByStatus(filteredItems, "Lebih")}
-            color="blue"
-          />
-          <MiniSummary
-            label="Kurang"
-            value={countByStatus(filteredItems, "Kurang")}
-            color="red"
-          />
+            <h4 className="mt-1 truncate text-xl font-black text-slate-900">
+              {selectedSessionSummary.name}
+            </h4>
+
+            <p className="mt-1 text-xs font-bold text-slate-500">
+              {selectedSessionSummary.scheduleDay} • {selectedSessionSummary.type} • {selectedSessionSummary.status}
+            </p>
+
+            <p className="mt-1 text-xs font-bold text-slate-400">
+              Mulai: {formatDateTime(selectedSessionSummary.createdAt)} • Selesai: {formatDateTime(selectedSessionSummary.finishedAt)}
+            </p>
+
+            {selectedSessionSummary.note && (
+              <p className="mt-1 line-clamp-1 text-xs font-semibold leading-relaxed text-slate-500">
+                Catatan: {selectedSessionSummary.note}
+              </p>
+            )}
+          </div>
+
+          <div className="w-full xl:max-w-2xl">
+            <div className="grid gap-2 sm:grid-cols-4">
+              <CompactProgressStat label="Ditampilkan" value={filteredItems.length} />
+              <CompactProgressStat
+                label="Sesuai"
+                value={countByStatus(filteredItems, "Sesuai")}
+                color="emerald"
+              />
+              <CompactProgressStat
+                label="Lebih"
+                value={countByStatus(filteredItems, "Lebih")}
+                color="blue"
+              />
+              <CompactProgressStat
+                label="Kurang"
+                value={countByStatus(filteredItems, "Kurang")}
+                color="red"
+              />
+            </div>
+
+            <div className="mt-2 rounded-xl border border-slate-200 bg-white p-2">
+              <FilterGroup
+                label="Filter Brand"
+                filters={brandFilters}
+                value={brandFilter}
+                onChange={setBrandFilter}
+                activeClass="bg-slate-900 text-white"
+                inactiveClass="bg-slate-100 text-slate-600 hover:bg-slate-200"
+              />
+
+              <p className="mt-1 text-[11px] font-bold text-slate-400">
+                Menampilkan {filteredItems.length} dari {selectedSessionSummary.items.length} item.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
-
-      <BrandFilterPanel
-        brandFilters={brandFilters}
-        brandFilter={brandFilter}
-        setBrandFilter={setBrandFilter}
-        shownCount={filteredItems.length}
-        totalCount={selectedSessionSummary.items.length}
-        color="slate"
-      />
 
       {selectedSessionSummary.items.length === 0 ? (
         <EmptyModalState text="Belum ada item yang dicek pada sesi ini" />
