@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import MainLayout from "../layouts/MainLayout"
-import { products } from "../data/dummyProducts"
+import { products as dummyProducts } from "../data/dummyProducts"
+import AddProductModal from "../components/stock-barang/AddProductModal"
 import ActiveStockOpnameSessionCard from "../components/stock-opname/ActiveStockOpnameSessionCard"
 import CreateStockOpnameSessionModal from "../components/stock-opname/CreateStockOpnameSessionModal"
 import StockOpnameCheckModal from "../components/stock-opname/StockOpnameCheckModal"
@@ -14,7 +15,8 @@ function StokBarang() {
   const [stockFilter, setStockFilter] = useState("Semua")
   const [productViewMode, setProductViewMode] = useState("Semua")
   const [expandedProductId, setExpandedProductId] = useState(null)
-  const [showComingSoon, setShowComingSoon] = useState(false)
+  const [productList, setProductList] = useState([])
+  const [showAddProduct, setShowAddProduct] = useState(false)
 
   const [selectedStockOpname, setSelectedStockOpname] = useState(null)
   const [physicalStock, setPhysicalStock] = useState("")
@@ -98,6 +100,17 @@ function StokBarang() {
   ]
 
   useEffect(() => {
+    const storedProducts = JSON.parse(
+      localStorage.getItem("radProducts") || "null"
+    )
+
+    if (Array.isArray(storedProducts) && storedProducts.length > 0) {
+      setProductList(storedProducts)
+    } else {
+      setProductList(dummyProducts)
+      localStorage.setItem("radProducts", JSON.stringify(dummyProducts))
+    }
+
     const storedHistory = JSON.parse(
       localStorage.getItem("stockOpnameHistory") || "[]"
     )
@@ -245,17 +258,17 @@ function StokBarang() {
     return buildSessionSummary(session, sessionItems, getSessionStatus(session))
   }
 
-  const totalProducts = products.length
+  const totalProducts = productList.length
 
-  const totalVariants = products.reduce((total, product) => {
+  const totalVariants = productList.reduce((total, product) => {
     return total + Number(product.variants?.length || 0)
   }, 0)
 
-  const totalStock = products.reduce((total, product) => {
+  const totalStock = productList.reduce((total, product) => {
     return total + getTotalStock(product)
   }, 0)
 
-  const totalNeedCheck = products.filter((product) => {
+  const totalNeedCheck = productList.filter((product) => {
     const stock = getTotalStock(product)
     const minimumStock = getMinimumStock(product)
     const status = getStockStatus(stock, minimumStock)
@@ -264,10 +277,10 @@ function StokBarang() {
   }).length
 
   const sessionProductsCount = activeStockOpnameSession
-    ? products.filter((product) => isProductMatchActiveSession(product)).length
+    ? productList.filter((product) => isProductMatchActiveSession(product)).length
     : 0
 
-  const filteredProducts = products.filter((product) => {
+  const filteredProducts = productList.filter((product) => {
     const keyword = searchTerm.toLowerCase()
     const productStock = getTotalStock(product)
     const minimumStock = getMinimumStock(product)
@@ -372,18 +385,16 @@ function StokBarang() {
     0
   )
 
-  const activeSessionCheckedItems = activeStockOpnameSession
-    ? stockOpnameHistory.filter((item) => {
-        return item.sessionId === activeStockOpnameSession.id
-      }).length
-    : 0
-
   const activeSessionSummary = activeStockOpnameSession
     ? getSessionSummary(activeStockOpnameSession)
     : null
 
   const activeSessionProgress = activeStockOpnameSession
-    ? getSessionProgressData(activeStockOpnameSession, stockOpnameHistory)
+    ? getSessionProgressData(
+        activeStockOpnameSession,
+        stockOpnameHistory,
+        productList
+      )
     : getEmptySessionProgress()
 
   const selectedSystemStock = Number(selectedStockOpname?.systemStock || 0)
@@ -624,6 +635,14 @@ function StokBarang() {
     setSelectedSessionSummary(null)
   }
 
+  const saveNewProduct = (newProduct) => {
+    const updatedProducts = [newProduct, ...productList]
+
+    localStorage.setItem("radProducts", JSON.stringify(updatedProducts))
+    setProductList(updatedProducts)
+    setShowAddProduct(false)
+  }
+
   return (
     <MainLayout>
       <div className="min-h-screen">
@@ -672,7 +691,7 @@ function StokBarang() {
             </button>
 
             <button
-              onClick={() => setShowComingSoon(true)}
+              onClick={() => setShowAddProduct(true)}
               className="rounded-2xl bg-blue-50 px-5 py-3 text-sm font-black text-blue-600 shadow-sm transition hover:bg-blue-100"
             >
               + Tambah Produk
@@ -1016,8 +1035,11 @@ function StokBarang() {
           />
         )}
 
-        {showComingSoon && (
-          <InfoModal onClose={() => setShowComingSoon(false)} />
+        {showAddProduct && (
+          <AddProductModal
+            onClose={() => setShowAddProduct(false)}
+            onSave={saveNewProduct}
+          />
         )}
       </div>
     </MainLayout>
@@ -1040,7 +1062,6 @@ function countByStatus(items, status) {
   return items.filter((item) => item.status === status).length
 }
 
-
 function getEmptySessionProgress() {
   return {
     targetItems: [],
@@ -1053,10 +1074,10 @@ function getEmptySessionProgress() {
   }
 }
 
-function getSessionProgressData(session, historyItems) {
+function getSessionProgressData(session, historyItems, productsData = []) {
   if (!session) return getEmptySessionProgress()
 
-  const targetItems = products.flatMap((product) => {
+  const targetItems = productsData.flatMap((product) => {
     if (!session.categories?.includes(product.category)) return []
 
     const variants = product.variants?.length
@@ -1123,7 +1144,6 @@ function getOpnameItemKey(item) {
     item.variantId || item.variantValue || item.sku || item.barcode || "-",
   ].join("::")
 }
-
 
 function SummaryCard({ label, value, color }) {
   const colorClass = {
@@ -1316,46 +1336,6 @@ function DetailItem({ label, value, breakText = false }) {
       >
         {value}
       </p>
-    </div>
-  )
-}
-
-function InfoModal({ onClose }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-black uppercase tracking-wide text-blue-600">
-              Info
-            </p>
-
-            <h3 className="mt-1 text-2xl font-black text-slate-900">
-              Tambah Produk
-            </h3>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
-          >
-            ✕
-          </button>
-        </div>
-
-        <p className="text-sm font-semibold leading-relaxed text-slate-500">
-          Fitur tambah produk belum diaktifkan di tahap ini. Sekarang kita fokus
-          dulu ke tampilan data barang dan stok agar aman sebelum masuk ke form
-          tambah/edit produk.
-        </p>
-
-        <button
-          onClick={onClose}
-          className="mt-5 w-full rounded-2xl bg-blue-600 py-3 text-sm font-black text-white transition hover:bg-blue-700"
-        >
-          Oke, Paham
-        </button>
-      </div>
     </div>
   )
 }
