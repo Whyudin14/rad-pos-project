@@ -18,7 +18,7 @@ function StockOpnameCheckModal({
   onSubmit,
 }) {
   return (
-    <ModalWrapper maxWidth="max-w-3xl">
+    <ModalWrapper maxWidth="max-w-3xl" zIndex="z-[60]">
       <ModalHeader
         eyebrow="Stok Opname"
         title="Cek Stok Fisik"

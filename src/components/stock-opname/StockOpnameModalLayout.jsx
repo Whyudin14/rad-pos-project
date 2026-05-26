@@ -1,6 +1,13 @@
-export function ModalWrapper({ children, maxWidth = "max-w-3xl", tall = false }) {
+export function ModalWrapper({
+  children,
+  maxWidth = "max-w-3xl",
+  tall = false,
+  zIndex = "z-50",
+}) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div
+      className={`fixed inset-0 ${zIndex} flex items-center justify-center bg-black/40 p-4`}
+    >
       <div
         className={`flex w-full ${maxWidth} flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ${
           tall ? "max-h-[92vh]" : "max-h-[88vh]"

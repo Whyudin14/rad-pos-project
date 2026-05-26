@@ -19,7 +19,7 @@ function EditStockOpnameModal({
     editPhysicalStock === "" ? 0 : numericPhysicalStock - systemStock
 
   return (
-    <ModalWrapper maxWidth="max-w-3xl">
+    <ModalWrapper maxWidth="max-w-3xl" zIndex="z-[60]">
       <ModalHeader
         eyebrow="Edit SO"
         title="Edit Hasil Stok Opname"
