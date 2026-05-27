@@ -27,6 +27,60 @@ function RiwayatTransaksi() {
     })
   }
 
+  const splitProductNameAndColor = (rawName = "") => {
+    const name = String(rawName || "").trim()
+
+    if (!name.includes(" - ")) {
+      return {
+        displayName: name,
+        color: "",
+      }
+    }
+
+    const parts = name.split(" - ")
+    const displayName = parts[0]?.trim() || name
+    const color = parts.slice(1).join(" - ").trim()
+
+    return {
+      displayName,
+      color,
+    }
+  }
+
+  const getItemDisplayData = (item) => {
+    const parsedProduct = splitProductNameAndColor(item.name)
+
+    const productName =
+      item.displayName ||
+      item.productName ||
+      parsedProduct.displayName ||
+      item.name ||
+      "-"
+
+    const productColor =
+      item.color || item.warna || item.productColor || parsedProduct.color || ""
+
+    const variantValue =
+      item.ukuran ||
+      item.variantValue ||
+      item.size ||
+      item.value ||
+      item.variant ||
+      ""
+
+    const sku = item.variantSku || item.sku || item.productSku || ""
+    const barcode =
+      item.variantBarcode || item.barcode || item.productBarcode || ""
+
+    return {
+      productName,
+      productColor,
+      variantValue,
+      sku,
+      barcode,
+    }
+  }
+
   const handlePrintReceipt = (transaction) => {
     setSelectedTransaction(null)
     setPrintTransaction(transaction)
@@ -191,7 +245,9 @@ function RiwayatTransaksi() {
 
                 <div className="space-y-3">
                   {selectedTransaction.items?.map((item, index) => {
-                    const price = Number(item.customPrice || item.price || 0)
+                    const price = Number(
+                      item.customPrice || item.price || item.harga || 0
+                    )
                     const qty = Number(item.qty || 0)
                     const discount = Number(
                       item.discountPercent || item.discount || 0
@@ -201,20 +257,48 @@ function RiwayatTransaksi() {
                     const discountAmount = normalTotal * (discount / 100)
                     const finalTotal = normalTotal - discountAmount
 
+                    const {
+                      productName,
+                      productColor,
+                      variantValue,
+                      sku,
+                      barcode,
+                    } = getItemDisplayData(item)
+
                     return (
                       <div
-                        key={`${item.id}-${index}`}
+                        key={`${item.cartId || item.id || index}-${index}`}
                         className="rounded-xl border border-slate-200 p-3"
                       >
                         <div className="flex justify-between gap-3">
-                          <div>
-                            <p className="font-bold text-slate-900">
-                              {item.name}
+                          <div className="min-w-0 flex-1">
+                            <p
+                              title={item.name}
+                              className="line-clamp-2 font-bold uppercase leading-snug text-slate-900"
+                            >
+                              {productName}
                             </p>
 
-                            {item.variantValue && (
-                              <p className="mt-0.5 text-xs font-semibold text-blue-600">
-                                {item.variantType || "Varian"}: {item.variantValue}
+                            {productColor && (
+                              <p
+                                title={productColor}
+                                className="mt-0.5 line-clamp-2 text-xs font-black uppercase leading-tight text-blue-600"
+                              >
+                                {productColor}
+                              </p>
+                            )}
+
+                            {variantValue && (
+                              <p className="mt-1 w-fit rounded-lg bg-blue-50 px-2 py-0.5 text-xs font-black text-emerald-700">
+                                Ukuran: {variantValue}
+                              </p>
+                            )}
+
+                            {(sku || barcode) && (
+                              <p className="mt-1 line-clamp-1 text-[11px] font-medium text-slate-400">
+                                {sku && `SKU: ${sku}`}
+                                {sku && barcode && " • "}
+                                {barcode && `Barcode: ${barcode}`}
                               </p>
                             )}
 
@@ -229,13 +313,13 @@ function RiwayatTransaksi() {
                             )}
                           </div>
 
-                          <p className="font-bold text-slate-900">
+                          <p className="shrink-0 text-right font-bold text-slate-900">
                             {formatRupiah(finalTotal)}
                           </p>
                         </div>
 
                         {discount > 0 && (
-                          <p className="mt-1 text-xs font-semibold text-red-500">
+                          <p className="mt-2 text-xs font-semibold text-red-500">
                             Diskon {discount}% - {formatRupiah(discountAmount)}
                           </p>
                         )}
