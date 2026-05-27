@@ -17,6 +17,54 @@ function PrintReceipt({ transaction }) {
     })
   }
 
+  const splitProductNameAndColor = (rawName = "") => {
+    const name = String(rawName || "").trim()
+
+    if (!name.includes(" - ")) {
+      return {
+        displayName: name,
+        color: "",
+      }
+    }
+
+    const parts = name.split(" - ")
+    const displayName = parts[0]?.trim() || name
+    const color = parts.slice(1).join(" - ").trim()
+
+    return {
+      displayName,
+      color,
+    }
+  }
+
+  const getItemDisplayData = (item) => {
+    const parsedProduct = splitProductNameAndColor(item.name)
+
+    const productName =
+      item.displayName ||
+      item.productName ||
+      parsedProduct.displayName ||
+      item.name ||
+      "-"
+
+    const productColor =
+      item.color || item.warna || item.productColor || parsedProduct.color || ""
+
+    const variantValue =
+      item.ukuran ||
+      item.variantValue ||
+      item.size ||
+      item.value ||
+      item.variant ||
+      ""
+
+    return {
+      productName,
+      productColor,
+      variantValue,
+    }
+  }
+
   const items = transaction.items || []
 
   const totalQty = items.reduce((sum, item) => {
@@ -56,9 +104,21 @@ function PrintReceipt({ transaction }) {
     return normalTotal - discountAmount
   }
 
-  const subtotalBeforeMember =
-    Number(transaction.subtotalBeforeMember || 0) ||
-    items.reduce((sum, item) => sum + getItemNormalTotal(item), 0)
+  const totalBelanja = items.reduce((sum, item) => {
+    return sum + getItemFinalTotal(item)
+  }, 0)
+
+  const finalTotal = Number(transaction.total || totalBelanja || 0)
+
+  const paidAmount =
+    transaction.paidAmount !== undefined && transaction.paidAmount !== null
+      ? Number(transaction.paidAmount || 0)
+      : finalTotal
+
+  const change =
+    transaction.change !== undefined && transaction.change !== null
+      ? Number(transaction.change || 0)
+      : paidAmount - finalTotal
 
   return (
     <div className="print-receipt">
@@ -94,21 +154,25 @@ function PrintReceipt({ transaction }) {
 
           const normalTotal = getItemNormalTotal(item)
           const discountAmount = getItemDiscountAmount(item)
-          const finalTotal = getItemFinalTotal(item)
+          const finalItemTotal = getItemFinalTotal(item)
 
           const hasDiscount = discountPercent > 0
 
+          const { productName, productColor, variantValue } =
+            getItemDisplayData(item)
+
           return (
-            <div key={`${item.id}-${index}`} className="receipt-item">
+            <div
+              key={`${item.cartId || item.id || index}-${index}`}
+              className="receipt-item"
+            >
               <p className="item-name">
-                {index + 1}. {item.name}
+                {index + 1}. {productName}
               </p>
 
-              {item.variantValue && (
-                <p className="small">
-                  {item.variantType || "Varian"}: {item.variantValue}
-                </p>
-              )}
+              {productColor && <p className="small">{productColor}</p>}
+
+              {variantValue && <p className="small">Ukuran: {variantValue}</p>}
 
               <div className="row">
                 <span>
@@ -126,7 +190,7 @@ function PrintReceipt({ transaction }) {
 
                   <div className="row small">
                     <span>Total Item</span>
-                    <span>{formatRupiah(finalTotal)}</span>
+                    <span>{formatRupiah(finalItemTotal)}</span>
                   </div>
                 </>
               )}
@@ -146,16 +210,9 @@ function PrintReceipt({ transaction }) {
         </div>
 
         <div className="row">
-          <span>Sub Total</span>
-          <span>{formatRupiah(subtotalBeforeMember)}</span>
+          <span>Total Belanja</span>
+          <span>{formatRupiah(totalBelanja)}</span>
         </div>
-
-        {Number(transaction.totalDiscount || 0) > 0 && (
-          <div className="row">
-            <span>Diskon Reguler</span>
-            <span>- {formatRupiah(transaction.totalDiscount)}</span>
-          </div>
-        )}
 
         {Number(transaction.memberDiscount || 0) > 0 && (
           <div className="row">
@@ -170,17 +227,17 @@ function PrintReceipt({ transaction }) {
       <div className="payment">
         <div className="row total">
           <span>Total</span>
-          <span>{formatRupiah(transaction.total)}</span>
+          <span>{formatRupiah(finalTotal)}</span>
         </div>
 
         <div className="row">
           <span>Bayar ({transaction.paymentMethod || "-"})</span>
-          <span>{formatRupiah(transaction.paidAmount)}</span>
+          <span>{formatRupiah(paidAmount)}</span>
         </div>
 
         <div className="row">
           <span>Kembali</span>
-          <span>{formatRupiah(transaction.change)}</span>
+          <span>{formatRupiah(change)}</span>
         </div>
 
         {totalSaved > 0 && (
