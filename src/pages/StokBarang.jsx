@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import MainLayout from "../layouts/MainLayout"
 import { products as dummyProducts } from "../data/dummyProducts"
 import AddProductModal from "../components/stock-barang/AddProductModal"
+import EditProductModal from "../components/stock-barang/EditProductModal"
 import ActiveStockOpnameSessionCard from "../components/stock-opname/ActiveStockOpnameSessionCard"
 import CreateStockOpnameSessionModal from "../components/stock-opname/CreateStockOpnameSessionModal"
 import StockOpnameCheckModal from "../components/stock-opname/StockOpnameCheckModal"
@@ -17,6 +18,7 @@ function StokBarang() {
   const [expandedProductId, setExpandedProductId] = useState(null)
   const [productList, setProductList] = useState([])
   const [showAddProduct, setShowAddProduct] = useState(false)
+  const [selectedEditProduct, setSelectedEditProduct] = useState(null)
 
   const [selectedStockOpname, setSelectedStockOpname] = useState(null)
   const [physicalStock, setPhysicalStock] = useState("")
@@ -643,6 +645,17 @@ function StokBarang() {
     setShowAddProduct(false)
   }
 
+  const saveEditedProduct = (updatedProduct) => {
+    const updatedProducts = productList.map((product) => {
+      return product.id === updatedProduct.id ? updatedProduct : product
+    })
+
+    localStorage.setItem("radProducts", JSON.stringify(updatedProducts))
+    setProductList(updatedProducts)
+    setSelectedEditProduct(null)
+    setExpandedProductId(updatedProduct.id)
+  }
+
   return (
     <MainLayout>
       <div className="min-h-screen">
@@ -913,6 +926,7 @@ function StokBarang() {
                           getVariantMinimumStock={getVariantMinimumStock}
                           getStockStatus={getStockStatus}
                           openStockOpnameModal={openStockOpnameModal}
+                          onEditProduct={setSelectedEditProduct}
                         />
                       )}
                     </div>
@@ -1039,6 +1053,14 @@ function StokBarang() {
           <AddProductModal
             onClose={() => setShowAddProduct(false)}
             onSave={saveNewProduct}
+          />
+        )}
+
+        {selectedEditProduct && (
+          <EditProductModal
+            product={selectedEditProduct}
+            onClose={() => setSelectedEditProduct(null)}
+            onSave={saveEditedProduct}
           />
         )}
       </div>
@@ -1198,6 +1220,7 @@ function ProductDetail({
   getVariantMinimumStock,
   getStockStatus,
   openStockOpnameModal,
+  onEditProduct,
 }) {
   return (
     <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
@@ -1240,6 +1263,14 @@ function ProductDetail({
           Fokus utama tabel ini adalah stok fisik per ukuran untuk membantu
           proses stok opname.
         </p>
+        <br/>
+
+        <button
+          onClick={() => onEditProduct(product)}
+          className="rounded-2xl bg-blue-600 px-3 py-2 text-sm font-black text-white transition hover:bg-blue-700"
+        >
+          Edit Produk
+        </button>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
