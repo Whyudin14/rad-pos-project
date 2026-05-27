@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { createRoot } from "react-dom/client"
 
 import MainLayout from "../layouts/MainLayout"
@@ -10,14 +10,15 @@ import EditCartItemModal from "../components/EditCartItemModal"
 import PrintReceipt from "../components/PrintReceipt"
 import ProductVariantModal from "../components/ProductVariantModal"
 
-import { products, categories } from "../data/dummyProducts"
-
 import {
   saveTransaction,
   generateInvoiceNumber,
 } from "../utils/transactionStorage"
 
+const PRODUCT_STORAGE_KEY = "radProducts"
+
 function POSKasir() {
+  const [products, setProducts] = useState([])
   const [cart, setCart] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [barcodeInput, setBarcodeInput] = useState("")
@@ -34,7 +35,139 @@ function POSKasir() {
     return `Rp ${Number(number || 0).toLocaleString("id-ID")}`
   }
 
+  const getVariantValue = (variant) => {
+    return (
+      variant?.value ||
+      variant?.ukuran ||
+      variant?.size ||
+      variant?.variantValue ||
+      "-"
+    )
+  }
+
+  const getVariantPrice = (product, variant) => {
+    return Number(
+      variant?.price ||
+        variant?.hargaJual ||
+        variant?.sellingPrice ||
+        product?.price ||
+        product?.hargaJual ||
+        0
+    )
+  }
+
+  const getVariantStock = (variant) => {
+    return Number(variant?.stock || variant?.stok || 0)
+  }
+
+  const splitProductNameAndColor = (rawName = "") => {
+  const name = String(rawName || "").trim()
+
+  if (!name.includes(" - ")) {
+    return {
+      displayName: name,
+      color: "",
+    }
+  }
+
+  const parts = name.split(" - ")
+  const displayName = parts[0]?.trim() || name
+  const color = parts.slice(1).join(" - ").trim()
+
+  return {
+    displayName,
+    color,
+  }
+}
+
+const normalizeProductForPOS = (product) => {
+  const variants = Array.isArray(product.variants) ? product.variants : []
+
+  const totalStock = variants.reduce((sum, variant) => {
+    return sum + getVariantStock(variant)
+  }, 0)
+
+  const variantPrices = variants
+    .map((variant) => getVariantPrice(product, variant))
+    .filter((price) => price > 0)
+
+  const lowestPrice =
+    variantPrices.length > 0
+      ? Math.min(...variantPrices)
+      : Number(product.price || product.hargaJual || 0)
+
+  const rawName =
+    product.name || product.namaProduk || product.productName || "-"
+
+  const productColor =
+    product.color || product.warna || product.productColor || ""
+
+  const parsedProduct = splitProductNameAndColor(rawName)
+
+  return {
+    ...product,
+    id: product.id || product.productId || crypto.randomUUID(),
+    name: rawName,
+    displayName: parsedProduct.displayName,
+    color: productColor || parsedProduct.color,
+    brand: product.brand || product.merek || "",
+    category: product.category || product.kategori || "Tanpa Kategori",
+    price: lowestPrice,
+    stock: totalStock,
+    variants,
+  }
+}
+
+  const loadProductsFromStorage = () => {
+    try {
+      const storedProducts = JSON.parse(
+        localStorage.getItem(PRODUCT_STORAGE_KEY) || "[]"
+      )
+
+      if (!Array.isArray(storedProducts)) {
+        setProducts([])
+        return
+      }
+
+      const activeProducts = storedProducts
+        .filter((product) => product.showInPOS === true)
+        .map(normalizeProductForPOS)
+
+      setProducts(activeProducts)
+    } catch (error) {
+      console.error("Gagal membaca radProducts:", error)
+      setProducts([])
+    }
+  }
+
+  useEffect(() => {
+    loadProductsFromStorage()
+
+    const handleFocus = () => {
+      loadProductsFromStorage()
+    }
+
+    window.addEventListener("focus", handleFocus)
+
+    return () => {
+      window.removeEventListener("focus", handleFocus)
+    }
+  }, [])
+
+  const categories = useMemo(() => {
+    const uniqueCategories = [
+      ...new Set(products.map((product) => product.category).filter(Boolean)),
+    ]
+
+    return ["All", ...uniqueCategories]
+  }, [products])
+
   const addToCart = (product) => {
+    if (!product?.variants || product.variants.length === 0) {
+      alert("Produk ini belum punya varian ukuran.")
+      return
+    }
+
     setSelectedProduct(product)
     setSelectedVariant(null)
   }
@@ -42,16 +175,18 @@ function POSKasir() {
   const addProductVariantToCart = (product, variantData) => {
     if (!product || !variantData) return false
 
-    const variantValue = variantData.value
-    const variantPrice = Number(variantData.price || product.price || 0)
-    const variantStock = Number(variantData.stock || 0)
+    const productId = product.id
+    const variantId = variantData.id || variantData.variantId || null
+    const variantValue = getVariantValue(variantData)
+    const variantPrice = getVariantPrice(product, variantData)
+    const variantStock = getVariantStock(variantData)
 
     if (variantStock <= 0) {
       alert("Stok varian ini kosong")
       return false
     }
 
-    const cartId = `${product.id}-${variantValue}`
+    const cartId = `${productId}-${variantId || variantValue}`
     const existingItem = cart.find((item) => item.cartId === cartId)
 
     if (existingItem) {
@@ -59,25 +194,42 @@ function POSKasir() {
       return true
     }
 
+    const variantSku = variantData.sku || variantData.variantSku || ""
+    const variantBarcode =
+      variantData.barcode || variantData.variantBarcode || ""
+
     const newItem = {
       ...product,
+
       cartId,
+      productId,
+      variantId,
+
+      id: productId,
+      name: product.name,
+      category: product.category,
+      brand: product.brand,
+
       qty: 1,
       stock: variantStock,
       price: variantPrice,
+      harga: variantPrice,
       customPrice: variantPrice,
       discountPercent: 0,
       note: "",
 
-      variantId: variantData.id || null,
-      variantType: product.variantType || "Variasi",
+      variantType: product.variantType || "Ukuran",
       variantValue,
+      ukuran: variantValue,
       variantStock,
+
+      sku: variantSku || product.sku || "",
+      barcode: variantBarcode || product.barcode || "",
 
       productSku: product.sku || "",
       productBarcode: product.barcode || "",
-      variantSku: variantData.sku || "",
-      variantBarcode: variantData.barcode || "",
+      variantSku,
+      variantBarcode,
     }
 
     setCart((prevCart) => [...prevCart, newItem])
@@ -89,41 +241,33 @@ function POSKasir() {
   const confirmAddToCart = (variantData = selectedVariant) => {
     if (!selectedProduct || !variantData) return
 
-    addProductVariantToCart(selectedProduct, variantData)
+    const success = addProductVariantToCart(selectedProduct, variantData)
 
-    setSelectedProduct(null)
-    setSelectedVariant(null)
+    if (success) {
+      setSelectedProduct(null)
+      setSelectedVariant(null)
+    }
   }
 
   const handleBarcodeSubmit = (e) => {
     e.preventDefault()
 
     const keyword = barcodeInput.trim()
-
     if (!keyword) return
 
     const normalizedKeyword = keyword.toLowerCase()
 
-    const matchedProduct = products.find((product) => {
-      return (
-        product.barcode === keyword ||
-        product.sku?.toLowerCase() === normalizedKeyword
-      )
-    })
-
-    if (matchedProduct) {
-      setSelectedProduct(matchedProduct)
-      setSelectedVariant(null)
-      setBarcodeInput("")
-      return
-    }
-
     for (const product of products) {
       const matchedVariant = product.variants?.find((variant) => {
-        return (
-          variant.barcode === keyword ||
-          variant.sku?.toLowerCase() === normalizedKeyword
+        const variantSku = String(
+          variant.sku || variant.variantSku || ""
+        ).toLowerCase()
+
+        const variantBarcode = String(
+          variant.barcode || variant.variantBarcode || ""
         )
+
+        return variantBarcode === keyword || variantSku === normalizedKeyword
       })
 
       if (matchedVariant) {
@@ -131,6 +275,19 @@ function POSKasir() {
         setBarcodeInput("")
         return
       }
+    }
+
+    const matchedProduct = products.find((product) => {
+      const productSku = String(product.sku || "").toLowerCase()
+      const productBarcode = String(product.barcode || "")
+
+      return productBarcode === keyword || productSku === normalizedKeyword
+    })
+
+    if (matchedProduct) {
+      addToCart(matchedProduct)
+      setBarcodeInput("")
+      return
     }
 
     alert("Barcode / SKU tidak ditemukan")
@@ -410,12 +567,23 @@ function POSKasir() {
   }
 
   const filteredProducts = products.filter((product) => {
+    const keyword = searchTerm.toLowerCase()
+
     const matchSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.barcode?.includes(searchTerm)
+    product.name.toLowerCase().includes(keyword) ||
+    product.displayName?.toLowerCase().includes(keyword) ||
+    product.color?.toLowerCase().includes(keyword) ||
+    product.category.toLowerCase().includes(keyword) ||
+    product.brand?.toLowerCase().includes(keyword) ||
+    product.sku?.toLowerCase().includes(keyword) ||
+    product.barcode?.includes(searchTerm) ||
+    product.variants?.some((variant) => {
+      return (
+        String(variant.sku || "").toLowerCase().includes(keyword) ||
+        String(variant.barcode || "").includes(searchTerm) ||
+        String(getVariantValue(variant)).toLowerCase().includes(keyword)
+      )
+    })
 
     const matchCategory =
       selectedCategory === "All" || product.category === selectedCategory
@@ -464,12 +632,12 @@ function POSKasir() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Cari produk, brand, SKU, atau barcode..."
+              placeholder="Cari produk, brand, SKU, barcode, atau ukuran..."
               className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-5 py-4 text-sm outline-none"
             />
           </div>
 
-          <div className="mb-5 flex items-center gap-3 overflow-x-auto">
+          <div className="mb-5 flex items-center gap-3 overflow-x-auto pb-1">
             {categories.map((category) => {
               const isActive = selectedCategory === category
 
@@ -491,8 +659,14 @@ function POSKasir() {
 
           <div className="min-h-[520px] overflow-y-auto rounded-3xl">
             {filteredProducts.length === 0 ? (
-              <div className="flex h-[400px] items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 text-slate-400">
-                Produk tidak ditemukan
+              <div className="flex h-[400px] flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 text-center">
+                <p className="font-bold text-slate-500">
+                  Produk POS tidak ditemukan
+                </p>
+                <p className="mt-1 max-w-md text-sm text-slate-400">
+                  Pastikan produk di Stok Barang sudah aktif dan opsi tampil di
+                  POS sudah dinyalakan.
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-5">

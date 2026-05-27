@@ -3,7 +3,7 @@ function CartItem({ item, onRemove, onEdit }) {
     return `Rp ${Number(number || 0).toLocaleString("id-ID")}`
   }
 
-  const customPrice = Number(item.customPrice || item.price || 0)
+  const customPrice = Number(item.customPrice || item.price || item.harga || 0)
   const discountPercent = Number(item.discountPercent || item.discount || 0)
   const qty = Number(item.qty || 0)
 
@@ -12,15 +12,21 @@ function CartItem({ item, onRemove, onEdit }) {
 
   const itemTotal = priceAfterDiscount * qty
 
-  const variantLabel =
-    item.variantType && item.variantValue
-      ? `${item.variantType}: ${item.variantValue}`
-      : null
+  const productName = item.displayName || item.name || "-"
+  const productColor = item.color || item.warna || ""
+  const variantValue =
+    item.ukuran || item.variantValue || item.size || item.value || ""
+
+  const variantLabel = variantValue ? `Ukuran ${variantValue}` : null
 
   const stockLabel =
     item.variantStock !== undefined && item.variantStock !== null
       ? `Stok varian: ${item.variantStock}`
       : null
+
+  const itemSku = item.variantSku || item.sku || item.productSku || ""
+  const itemBarcode =
+    item.variantBarcode || item.barcode || item.productBarcode || ""
 
   return (
     <div
@@ -29,19 +35,43 @@ function CartItem({ item, onRemove, onEdit }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h4 className="line-clamp-1 text-sm font-black text-slate-900">
-            {item.name}
+          <h4
+            title={item.name}
+            className="line-clamp-2 text-sm font-black uppercase leading-tight text-slate-900"
+          >
+            {productName}
           </h4>
 
-          {variantLabel && (
-            <p className="mt-1 w-fit rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
-              {variantLabel}
-            </p>
+          {(productColor || variantLabel) && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {productColor && (
+                <span
+                  title={productColor}
+                  className="line-clamp-1 max-w-full rounded-lg bg-blue-50 px-2 py-0.5 text-[11px] font-black uppercase text-blue-700"
+                >
+                  {productColor}
+                </span>
+              )}
+
+              {variantLabel && (
+                <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-600">
+                  {variantLabel}
+                </span>
+              )}
+            </div>
           )}
 
-          <p className="mt-1 text-xs font-medium text-slate-400">
+          <p className="mt-1.5 text-xs font-medium text-slate-400">
             {qty} x {formatRupiah(customPrice)}
           </p>
+
+          {(itemSku || itemBarcode) && (
+            <p className="mt-0.5 line-clamp-1 text-[11px] font-medium text-slate-400">
+              {itemSku && `SKU: ${itemSku}`}
+              {itemSku && itemBarcode && " • "}
+              {itemBarcode && `Barcode: ${itemBarcode}`}
+            </p>
+          )}
 
           {stockLabel && (
             <p className="mt-0.5 text-[11px] font-medium text-slate-400">
@@ -61,13 +91,13 @@ function CartItem({ item, onRemove, onEdit }) {
             e.stopPropagation()
             onRemove(item.cartId || item.id)
           }}
-          className="rounded-xl bg-red-50 px-2.5 py-1 text-xs font-bold text-red-500 hover:bg-red-100"
+          className="shrink-0 rounded-xl bg-red-50 px-2.5 py-1 text-xs font-bold text-red-500 hover:bg-red-100"
         >
           Hapus
         </button>
       </div>
 
-      <div className="mt-2 flex items-center justify-between gap-3">
+      <div className="mt-3 flex items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-xl bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
             Qty {qty}
@@ -80,7 +110,7 @@ function CartItem({ item, onRemove, onEdit }) {
           )}
         </div>
 
-        <p className="text-lg font-black text-blue-600">
+        <p className="shrink-0 text-lg font-black text-blue-600">
           {formatRupiah(itemTotal)}
         </p>
       </div>
