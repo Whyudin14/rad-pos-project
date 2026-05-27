@@ -19,6 +19,7 @@ function StokBarang() {
   const [productList, setProductList] = useState([])
   const [showAddProduct, setShowAddProduct] = useState(false)
   const [selectedEditProduct, setSelectedEditProduct] = useState(null)
+  const [successMessage, setSuccessMessage] = useState("")
 
   const [selectedStockOpname, setSelectedStockOpname] = useState(null)
   const [physicalStock, setPhysicalStock] = useState("")
@@ -404,6 +405,14 @@ function StokBarang() {
   const selectedDifference =
     physicalStock === "" ? 0 : selectedPhysicalStock - selectedSystemStock
 
+  const showSuccessNotification = (message) => {
+    setSuccessMessage(message)
+
+    setTimeout(() => {
+      setSuccessMessage("")
+    }, 2500)
+  }
+
   const createStockOpnameSession = () => {
     const selectedTypeData = getSelectedSessionTypeData()
 
@@ -643,6 +652,8 @@ function StokBarang() {
     localStorage.setItem("radProducts", JSON.stringify(updatedProducts))
     setProductList(updatedProducts)
     setShowAddProduct(false)
+    setExpandedProductId(newProduct.id)
+    showSuccessNotification("Produk baru berhasil ditambahkan.")
   }
 
   const saveEditedProduct = (updatedProduct) => {
@@ -654,11 +665,29 @@ function StokBarang() {
     setProductList(updatedProducts)
     setSelectedEditProduct(null)
     setExpandedProductId(updatedProduct.id)
+    showSuccessNotification("Perubahan produk berhasil disimpan.")
   }
 
   return (
     <MainLayout>
       <div className="min-h-screen">
+        {successMessage && (
+          <div className="fixed right-4 top-4 z-[80] w-[calc(100%-2rem)] max-w-sm rounded-3xl border border-emerald-100 bg-white p-4 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-lg">
+                ✅
+              </div>
+
+              <div>
+                <p className="text-sm font-black text-slate-900">Berhasil</p>
+                <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-500">
+                  {successMessage}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="mb-1 text-sm font-black uppercase tracking-wide text-blue-600">
@@ -676,36 +705,8 @@ function StokBarang() {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
             <button
-              onClick={() => setShowCreateSession(true)}
-              className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
-            >
-              + Buat Sesi SO
-            </button>
-
-            <button
-              onClick={() => setShowActiveSessionResult(true)}
-              className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700"
-            >
-              Hasil SO Sesi Ini
-            </button>
-
-            <button
-              onClick={() => setShowSessionHistory(true)}
-              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-700"
-            >
-              Riwayat Sesi SO
-            </button>
-
-            <button
-              onClick={() => setShowOpnameHistory(true)}
-              className="rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
-            >
-              Detail Item SO
-            </button>
-
-            <button
               onClick={() => setShowAddProduct(true)}
-              className="rounded-2xl bg-blue-50 px-5 py-3 text-sm font-black text-blue-600 shadow-sm transition hover:bg-blue-100"
+              className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700"
             >
               + Tambah Produk
             </button>
@@ -727,6 +728,25 @@ function StokBarang() {
           onOpenActiveSessionResult={() => setShowActiveSessionResult(true)}
           onOpenSessionHistory={() => setShowSessionHistory(true)}
         />
+
+        <div className="mb-5 flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black text-slate-900">
+              Detail Item Stock Opname
+            </p>
+            <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-400">
+              Lihat riwayat pengecekan stok per item, termasuk status sesuai,
+              lebih, atau kurang.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowOpnameHistory(true)}
+            className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-200"
+          >
+            Buka Detail Item SO
+          </button>
+        </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -874,7 +894,10 @@ function StokBarang() {
                           </p>
                         </div>
 
-                        <TableInfo label="Kategori" value={product.category || "-"} />
+                        <TableInfo
+                          label="Kategori"
+                          value={product.category || "-"}
+                        />
 
                         <TableInfo
                           label="Harga"
@@ -1255,19 +1278,20 @@ function ProductDetail({
         </p>
       </div>
 
-      <div className="mb-3">
-        <p className="text-sm font-black text-slate-800">
-          Stok Per {product.variantType || "Varian"}
-        </p>
-        <p className="text-xs font-semibold text-slate-400">
-          Fokus utama tabel ini adalah stok fisik per ukuran untuk membantu
-          proses stok opname.
-        </p>
-        <br/>
+      <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-black text-slate-800">
+            Stok Per {product.variantType || "Varian"}
+          </p>
+          <p className="text-xs font-semibold text-slate-400">
+            Fokus utama tabel ini adalah stok fisik per ukuran untuk membantu
+            proses stok opname.
+          </p>
+        </div>
 
         <button
           onClick={() => onEditProduct(product)}
-          className="rounded-2xl bg-blue-600 px-3 py-2 text-sm font-black text-white transition hover:bg-blue-700"
+          className="rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-blue-700"
         >
           Edit Produk
         </button>

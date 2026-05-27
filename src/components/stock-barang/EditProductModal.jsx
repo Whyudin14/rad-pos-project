@@ -127,8 +127,23 @@ function EditProductModal({ product, onClose, onSave }) {
       return
     }
 
+    if (Number(formData.basePrice || 0) < 0) {
+      alert("Harga modal tidak boleh minus.")
+      return
+    }
+
+    if (Number(formData.minimumStock || 0) < 0) {
+      alert("Minimum stok tidak boleh minus.")
+      return
+    }
+
     const filledVariants = variants.filter((variant) => {
-      return variant.value || variant.stock || variant.sku || variant.barcode
+      return (
+        String(variant.value || "").trim() ||
+        String(variant.stock || "").trim() ||
+        String(variant.sku || "").trim() ||
+        String(variant.barcode || "").trim()
+      )
     })
 
     if (filledVariants.length === 0) {
@@ -136,8 +151,30 @@ function EditProductModal({ product, onClose, onSave }) {
       return
     }
 
+    const emptySizeVariant = filledVariants.find((variant) => {
+      return !String(variant.value || "").trim()
+    })
+
+    if (emptySizeVariant) {
+      alert("Ukuran varian tidak boleh kosong.")
+      return
+    }
+
+    const invalidNumberVariant = filledVariants.find((variant) => {
+      return (
+        Number(variant.stock || 0) < 0 ||
+        Number(variant.price || 0) < 0 ||
+        Number(variant.minimumStock || 0) < 0
+      )
+    })
+
+    if (invalidNumberVariant) {
+      alert("Stok, harga varian, dan minimum stok tidak boleh minus.")
+      return
+    }
+
     const variantValues = filledVariants.map((variant) => {
-      return String(variant.value || "-").trim().toLowerCase()
+      return String(variant.value || "").trim().toLowerCase()
     })
 
     const hasDuplicateVariant = variantValues.some((value, index) => {
@@ -194,9 +231,9 @@ function EditProductModal({ product, onClose, onSave }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
       <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-6">
           <div>
             <p className="text-sm font-black uppercase tracking-wide text-blue-600">
               Manajemen Barang
@@ -214,13 +251,13 @@ function EditProductModal({ product, onClose, onSave }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
           >
             ✕
           </button>
         </div>
 
-        <form onSubmit={submitProduct} className="overflow-y-auto px-6 py-5">
+        <form onSubmit={submitProduct} className="overflow-y-auto px-5 py-5 sm:px-6">
           <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-5">
               <SectionCard title="Informasi Produk">
@@ -352,7 +389,7 @@ function EditProductModal({ product, onClose, onSave }) {
             </div>
           </div>
 
-          <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-5">
+          <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-4 sm:p-5">
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <h3 className="text-base font-black text-slate-900">

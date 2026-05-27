@@ -106,7 +106,7 @@ function ActiveStockOpnameSessionCard({
         >
           {activeStockOpnameSession
             ? "Ganti / Buat Sesi Baru"
-            : "Buat Sesi SO"}
+            : "+ Buat Sesi SO"}
         </button>
 
         {activeStockOpnameSession && (
