@@ -174,3 +174,504 @@ body {
     margin: 0;
   }
 }
+
+/* =========================
+   PRINT SETTLEMENT MODE
+   ========================= */
+
+.settlement-print-header,
+.settlement-print-footer {
+  display: none;
+}
+
+@media print {
+  body:has(.settlement-print-area),
+  html:has(.settlement-print-area) {
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  body:has(.settlement-print-area) * {
+    visibility: hidden !important;
+  }
+
+  body:has(.settlement-print-area) .no-print {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-print-area,
+  body:has(.settlement-print-area) .settlement-print-area * {
+    visibility: visible !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    padding: 18mm 14mm !important;
+    background: white !important;
+    color: #000 !important;
+    box-sizing: border-box !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-print-header {
+    display: block !important;
+    text-align: center !important;
+    margin-bottom: 18px !important;
+    padding-bottom: 12px !important;
+    border-bottom: 2px solid #000 !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-print-header h1 {
+    margin: 0 !important;
+    font-size: 20px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-print-header h2 {
+    margin: 4px 0 8px !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-print-header p {
+    margin: 2px 0 !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-card,
+  body:has(.settlement-print-area) .settlement-section,
+  body:has(.settlement-print-area) .settlement-table-wrapper,
+  body:has(.settlement-print-area) .settlement-payment-card,
+  body:has(.settlement-print-area) .settlement-discount-card {
+    border: 1px solid #000 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+    color: #000 !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-card,
+  body:has(.settlement-print-area) .settlement-section {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-card {
+    padding: 12px !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-section {
+    padding: 14px !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-payment-card,
+  body:has(.settlement-print-area) .settlement-discount-card {
+    padding: 10px !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-table-wrapper {
+    overflow: visible !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-transaction-row {
+    display: grid !important;
+    grid-template-columns: 1.4fr 1.2fr 1fr 0.8fr 0.6fr !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+    border-bottom: 1px solid #ddd !important;
+    background: white !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-status-badge,
+  body:has(.settlement-print-area) .settlement-stock-badge,
+  body:has(.settlement-print-area) .settlement-method-badge {
+    border: 1px solid #000 !important;
+    border-radius: 999px !important;
+    background: white !important;
+    color: #000 !important;
+  }
+
+  body:has(.settlement-print-area) .settlement-print-footer {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 40px !important;
+    margin-top: 40px !important;
+    text-align: center !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+  }
+
+  body:has(.settlement-print-area) .signature-line {
+    height: 60px !important;
+    margin: 8px auto 6px !important;
+    width: 180px !important;
+    border-bottom: 1px solid #000 !important;
+  }
+
+  body:has(.settlement-print-area) p,
+  body:has(.settlement-print-area) h1,
+  body:has(.settlement-print-area) h2,
+  body:has(.settlement-print-area) span,
+  body:has(.settlement-print-area) div {
+    color: #000 !important;
+  }
+
+  body:has(.settlement-print-area) .line-through {
+    text-decoration: line-through !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+}
+
+/* =========================
+   PRINT SETTLEMENT A4 / PDF
+   ========================= */
+
+.settlement-a4-report,
+.settlement-receipt-report {
+  display: none;
+}
+
+@media print {
+  html.print-settlement-a4,
+  body.print-settlement-a4 {
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  body.print-settlement-a4 * {
+    visibility: hidden !important;
+  }
+
+  body.print-settlement-a4 .print-only {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body.print-settlement-a4 .settlement-a4-report,
+  body.print-settlement-a4 .settlement-a4-report * {
+    visibility: visible !important;
+  }
+
+  body.print-settlement-a4 .settlement-a4-report {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    padding: 16mm 14mm !important;
+    background: white !important;
+    color: #000 !important;
+    box-sizing: border-box !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    page: settlement-a4;
+  }
+
+  .settlement-a4-header {
+    text-align: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+
+  .settlement-a4-header h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+  }
+
+  .settlement-a4-header h2 {
+    margin: 4px 0 8px;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .settlement-a4-header p {
+    margin: 2px 0;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .settlement-a4-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .settlement-a4-box {
+    border: 1px solid #000;
+    padding: 10px;
+    break-inside: avoid;
+  }
+
+  .settlement-a4-box span {
+    display: block;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .settlement-a4-box strong {
+    display: block;
+    margin-top: 6px;
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .settlement-a4-box small {
+    display: block;
+    margin-top: 4px;
+    font-size: 8px;
+    font-weight: 600;
+  }
+
+  .settlement-a4-section {
+    border: 1px solid #000;
+    padding: 10px;
+    margin-bottom: 12px;
+    break-inside: avoid;
+  }
+
+  .settlement-a4-section h3 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .settlement-a4-payment-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .settlement-a4-payment {
+    border: 1px solid #999;
+    padding: 8px;
+  }
+
+  .settlement-a4-payment span,
+  .settlement-a4-row span {
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .settlement-a4-payment strong,
+  .settlement-a4-row strong {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .settlement-a4-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .settlement-a4-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9px;
+  }
+
+  .settlement-a4-table th,
+  .settlement-a4-table td {
+    border: 1px solid #000;
+    padding: 6px;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .settlement-a4-table th {
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .settlement-a4-table small {
+    display: block;
+    margin-top: 3px;
+    font-size: 8px;
+  }
+
+  .settlement-a4-empty {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .settlement-void-text {
+    text-decoration: line-through;
+  }
+
+  .settlement-a4-signature {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-top: 34px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .settlement-a4-signature div div {
+    height: 54px;
+    width: 170px;
+    margin: 8px auto 6px;
+    border-bottom: 1px solid #000;
+  }
+
+  @page settlement-a4 {
+    size: A4 portrait;
+    margin: 0;
+  }
+}
+
+/* =========================
+   PRINT SETTLEMENT RECEIPT 58MM
+   ========================= */
+
+@media print {
+  html.print-settlement-receipt,
+  body.print-settlement-receipt {
+    width: 58mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  body.print-settlement-receipt * {
+    visibility: hidden !important;
+  }
+
+  body.print-settlement-receipt .print-only {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body.print-settlement-receipt .settlement-receipt-report,
+  body.print-settlement-receipt .settlement-receipt-report * {
+    visibility: visible !important;
+  }
+
+  body.print-settlement-receipt .settlement-receipt-report {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 58mm !important;
+    max-width: 58mm !important;
+    margin: 0 !important;
+    padding: 6px !important;
+    background: white !important;
+    color: #000 !important;
+    box-sizing: border-box !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 10px !important;
+    line-height: 1.35 !important;
+    page: settlement-receipt;
+  }
+
+  .settlement-receipt-header {
+    text-align: center;
+  }
+
+  .settlement-receipt-header h1 {
+    margin: 0 0 3px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .settlement-receipt-header p {
+    margin: 1px 0;
+    font-size: 9px;
+    font-weight: 600;
+  }
+
+  .settlement-receipt-line {
+    border-top: 1px dashed #000;
+    margin: 6px 0;
+  }
+
+  .settlement-receipt-section h2 {
+    margin: 0 0 4px;
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  .settlement-receipt-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 6px;
+    margin: 2px 0;
+  }
+
+  .settlement-receipt-row span:first-child {
+    flex: 1;
+  }
+
+  .settlement-receipt-row span:last-child,
+  .settlement-receipt-row strong {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .settlement-receipt-row strong {
+    font-weight: 800;
+  }
+
+  .settlement-receipt-row.small {
+    font-size: 9px;
+  }
+
+  .settlement-receipt-transaction {
+    margin-bottom: 5px;
+  }
+
+  .settlement-receipt-note {
+    margin: 2px 0 0;
+    font-size: 9px;
+    font-style: italic;
+  }
+
+  .settlement-receipt-empty {
+    margin: 0;
+    font-size: 9px;
+  }
+
+  .settlement-receipt-footer {
+    text-align: center;
+    margin-top: 6px;
+  }
+
+  .settlement-receipt-footer p {
+    margin: 5px 0;
+    font-size: 9px;
+    font-weight: 600;
+  }
+
+  @page settlement-receipt {
+    size: 58mm auto;
+    margin: 0;
+  }
+}
