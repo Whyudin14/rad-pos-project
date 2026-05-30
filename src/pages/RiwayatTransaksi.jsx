@@ -40,6 +40,16 @@ function RiwayatTransaksi() {
     return transaction?.status === "Void"
   }
 
+  const getTotalItems = (transaction) => {
+    if (transaction?.totalItems) return transaction.totalItems
+
+    return (
+      transaction?.items?.reduce((total, item) => {
+        return total + Number(item.qty || 0)
+      }, 0) || 0
+    )
+  }
+
   const handleVoidTransaction = (transaction) => {
     if (!transaction) return
 
@@ -58,7 +68,7 @@ function RiwayatTransaksi() {
     }
 
     const isConfirmed = window.confirm(
-      `Yakin mau void transaksi ${transaction.invoiceNumber}?\n\nTransaksi tidak akan dihapus, hanya ditandai sebagai Void.`
+      `Yakin mau void transaksi ${transaction.invoiceNumber}?\n\nTransaksi tidak akan dihapus, hanya ditandai sebagai Void dan stok akan dikembalikan.`
     )
 
     if (!isConfirmed) return
@@ -163,29 +173,63 @@ function RiwayatTransaksi() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
-        <div className="no-print">
-          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="min-h-screen bg-slate-50 px-4 py-5 md:px-6">
+        <div className="no-print mx-auto w-full max-w-[1500px]">
+          <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">
+              <p className="text-sm font-semibold text-blue-600">
+                RAD Sport POS
+              </p>
+              <h1 className="mt-1 text-2xl font-black text-slate-900">
                 Riwayat Transaksi
               </h1>
-              <p className="mt-1 text-sm text-slate-500">
-                Daftar transaksi yang tersimpan sementara di localStorage.
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                Pantau transaksi penjualan, cetak ulang struk, dan lakukan void
+                transaksi jika terjadi kesalahan input.
               </p>
             </div>
 
-            <div className="w-fit rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
-              Total transaksi:{" "}
-              <span className="font-bold text-slate-900">
-                {transactions.length}
-              </span>
+            <div className="grid w-full gap-3 sm:grid-cols-3 lg:w-auto">
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Total Transaksi
+                </p>
+                <p className="mt-1 text-xl font-black text-slate-900">
+                  {transactions.length}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Lunas
+                </p>
+                <p className="mt-1 text-xl font-black text-emerald-600">
+                  {
+                    transactions.filter(
+                      (transaction) => !isVoidTransaction(transaction)
+                    ).length
+                  }
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Void
+                </p>
+                <p className="mt-1 text-xl font-black text-red-600">
+                  {
+                    transactions.filter((transaction) =>
+                      isVoidTransaction(transaction)
+                    ).length
+                  }
+                </p>
+              </div>
             </div>
           </div>
 
           {transactions.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
-              <p className="text-sm font-semibold text-slate-700">
+            <div className="rounded-[26px] border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
+              <p className="text-sm font-bold text-slate-700">
                 Belum ada transaksi.
               </p>
               <p className="mt-1 text-sm text-slate-400">
@@ -193,8 +237,8 @@ function RiwayatTransaksi() {
               </p>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="hidden grid-cols-6 border-b border-slate-200 bg-slate-100 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 md:grid">
+            <div className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-sm">
+              <div className="hidden grid-cols-[1.45fr_1.15fr_1fr_0.8fr_0.65fr_1.1fr] border-b border-slate-200 bg-slate-100 px-5 py-3 text-xs font-black uppercase tracking-wide text-slate-500 xl:grid">
                 <div>Invoice</div>
                 <div>Tanggal</div>
                 <div>Total</div>
@@ -204,168 +248,202 @@ function RiwayatTransaksi() {
               </div>
 
               <div className="divide-y divide-slate-100">
-                {transactions.map((transaction, index) => (
-                  <div
-                    key={transaction.id || transaction.invoiceNumber || index}
-                    className={`grid gap-3 px-4 py-4 text-sm md:grid-cols-6 md:items-center ${
-                      isVoidTransaction(transaction) ? "bg-red-50/40" : ""
-                    }`}
-                  >
-                    <div>
-                      <p
-                        className={`font-bold ${
-                          isVoidTransaction(transaction)
+                {transactions.map((transaction, index) => {
+                  const isVoid = isVoidTransaction(transaction)
+
+                  return (
+                    <div
+                      key={transaction.id || transaction.invoiceNumber || index}
+                      className={`grid gap-4 px-5 py-4 text-sm xl:grid-cols-[1.45fr_1.15fr_1fr_0.8fr_0.65fr_1.1fr] xl:items-center ${
+                        isVoid ? "bg-red-50/50" : "bg-white"
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <p
+                          className={`break-words text-base font-black leading-snug ${
+                            isVoid
+                              ? "text-slate-400 line-through"
+                              : "text-slate-900"
+                          }`}
+                        >
+                          {transaction.invoiceNumber}
+                        </p>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <span
+                            className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${
+                              isVoid
+                                ? "bg-red-100 text-red-600"
+                                : "bg-emerald-50 text-emerald-600"
+                            }`}
+                          >
+                            {transaction.status || "Lunas"}
+                          </span>
+
+                          {transaction.stockRestored && (
+                            <span className="w-fit rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-blue-600">
+                              Stok kembali
+                            </span>
+                          )}
+
+                          <p className="text-xs font-semibold text-slate-400 xl:hidden">
+                            {formatDate(transaction.date)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="hidden font-semibold text-slate-600 xl:block">
+                        {formatDate(transaction.date)}
+                      </div>
+
+                      <div
+                        className={`text-base font-black ${
+                          isVoid
                             ? "text-slate-400 line-through"
                             : "text-slate-900"
                         }`}
                       >
-                        {transaction.invoiceNumber}
-                      </p>
+                        {formatRupiah(transaction.total)}
+                      </div>
 
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <span
-                          className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${
-                            isVoidTransaction(transaction)
-                              ? "bg-red-100 text-red-600"
-                              : "bg-emerald-50 text-emerald-600"
-                          }`}
-                        >
-                          {transaction.status || "Lunas"}
+                      <div>
+                        <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
+                          {transaction.paymentMethod || "-"}
                         </span>
+                      </div>
 
-                        <p className="text-xs text-slate-400 md:hidden">
-                          {formatDate(transaction.date)}
-                        </p>
+                      <div className="font-bold text-slate-600">
+                        {getTotalItems(transaction)} item
+                      </div>
+
+                      <div className="flex justify-start gap-2 xl:justify-end">
+                        <button
+                          onClick={() => setSelectedTransaction(transaction)}
+                          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 transition hover:bg-slate-50"
+                        >
+                          Detail
+                        </button>
+
+                        <button
+                          onClick={() => handlePrintReceipt(transaction)}
+                          disabled={isVoid}
+                          className="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                        >
+                          Cetak
+                        </button>
                       </div>
                     </div>
-
-                    <div className="hidden text-slate-600 md:block">
-                      {formatDate(transaction.date)}
-                    </div>
-
-                    <div
-                      className={`font-bold ${
-                        isVoidTransaction(transaction)
-                          ? "text-slate-400 line-through"
-                          : "text-slate-900"
-                      }`}
-                    >
-                      {formatRupiah(transaction.total)}
-                    </div>
-
-                    <div>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                        {transaction.paymentMethod}
-                      </span>
-                    </div>
-
-                    <div className="text-slate-600">
-                      {transaction.totalItems || transaction.items?.length || 0}{" "}
-                      item
-                    </div>
-
-                    <div className="flex justify-start gap-2 md:justify-end">
-                      <button
-                        onClick={() => setSelectedTransaction(transaction)}
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
-                      >
-                        Detail
-                      </button>
-
-                      <button
-                        onClick={() => handlePrintReceipt(transaction)}
-                        disabled={isVoidTransaction(transaction)}
-                        className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
-                      >
-                        Cetak
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
 
           {selectedTransaction && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-              <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+              <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[26px] bg-white p-5 shadow-2xl">
                 <div className="mb-4 flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900">
+                    <p className="text-xs font-black uppercase tracking-wide text-blue-600">
                       Detail Transaksi
-                    </h2>
-                    <p className="text-sm text-slate-500">
+                    </p>
+                    <h2 className="mt-1 text-xl font-black text-slate-900">
                       {selectedTransaction.invoiceNumber}
+                    </h2>
+                    <p className="mt-1 text-sm font-medium text-slate-500">
+                      {formatDate(selectedTransaction.date)}
                     </p>
                   </div>
 
                   <button
                     onClick={() => setSelectedTransaction(null)}
-                    className="rounded-lg bg-slate-100 px-3 py-1 text-sm font-bold text-slate-600 hover:bg-slate-200"
+                    className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-black text-slate-600 hover:bg-slate-200"
                   >
                     X
                   </button>
                 </div>
 
                 <div
-                  className={`mb-4 rounded-xl p-4 text-sm ${
+                  className={`mb-4 rounded-[20px] p-4 text-sm ${
                     isVoidTransaction(selectedTransaction)
                       ? "bg-red-50"
                       : "bg-slate-50"
                   }`}
                 >
-                  <div className="flex justify-between gap-4 py-1">
-                    <span className="text-slate-500">Tanggal</span>
-                    <span className="text-right font-semibold text-slate-900">
-                      {formatDate(selectedTransaction.date)}
-                    </span>
-                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                        Metode
+                      </p>
+                      <p className="mt-1 font-black text-slate-900">
+                        {selectedTransaction.paymentMethod || "-"}
+                      </p>
+                    </div>
 
-                  <div className="flex justify-between gap-4 py-1">
-                    <span className="text-slate-500">Metode</span>
-                    <span className="font-semibold text-slate-900">
-                      {selectedTransaction.paymentMethod}
-                    </span>
-                  </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                        Status
+                      </p>
+                      <p
+                        className={`mt-1 font-black ${
+                          isVoidTransaction(selectedTransaction)
+                            ? "text-red-600"
+                            : "text-emerald-600"
+                        }`}
+                      >
+                        {selectedTransaction.status || "Lunas"}
+                      </p>
+                    </div>
 
-                  <div className="flex justify-between gap-4 py-1">
-                    <span className="text-slate-500">Status</span>
-                    <span
-                      className={`font-bold ${
-                        isVoidTransaction(selectedTransaction)
-                          ? "text-red-600"
-                          : "text-green-600"
-                      }`}
-                    >
-                      {selectedTransaction.status || "Lunas"}
-                    </span>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                        Item
+                      </p>
+                      <p className="mt-1 font-black text-slate-900">
+                        {getTotalItems(selectedTransaction)} item
+                      </p>
+                    </div>
                   </div>
 
                   {isVoidTransaction(selectedTransaction) && (
-                    <>
-                      <div className="flex justify-between gap-4 py-1">
-                        <span className="text-slate-500">Alasan Void</span>
-                        <span className="text-right font-semibold text-red-600">
+                    <div className="mt-4 rounded-2xl border border-red-100 bg-white/70 p-3">
+                      <div className="mb-3">
+                        <p className="text-xs font-bold uppercase tracking-wide text-red-400">
+                          Alasan Void
+                        </p>
+                        <p className="mt-1 whitespace-pre-wrap break-words text-sm font-bold leading-relaxed text-red-600">
                           {selectedTransaction.voidReason || "-"}
-                        </span>
+                        </p>
                       </div>
 
-                      <div className="flex justify-between gap-4 py-1">
-                        <span className="text-slate-500">Waktu Void</span>
-                        <span className="text-right font-semibold text-slate-900">
-                          {selectedTransaction.voidedAt
-                            ? formatDate(selectedTransaction.voidedAt)
-                            : "-"}
-                        </span>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                            Waktu Void
+                          </p>
+                          <p className="mt-1 font-bold text-slate-800">
+                            {selectedTransaction.voidedAt
+                              ? formatDate(selectedTransaction.voidedAt)
+                              : "-"}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                            Void Oleh
+                          </p>
+                          <p className="mt-1 font-bold text-slate-800">
+                            {selectedTransaction.voidedBy || "-"}
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="flex justify-between gap-4 py-1">
-                        <span className="text-slate-500">Void Oleh</span>
-                        <span className="text-right font-semibold text-slate-900">
-                          {selectedTransaction.voidedBy || "-"}
-                        </span>
-                      </div>
-                    </>
+                      {selectedTransaction.stockRestored && (
+                        <p className="mt-3 w-fit rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-600">
+                          Stok otomatis sudah dikembalikan
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -394,17 +472,17 @@ function RiwayatTransaksi() {
                     return (
                       <div
                         key={`${item.cartId || item.id || index}-${index}`}
-                        className={`rounded-xl border p-3 ${
+                        className={`rounded-[20px] border p-4 ${
                           isVoidTransaction(selectedTransaction)
                             ? "border-red-100 bg-red-50/40"
-                            : "border-slate-200"
+                            : "border-slate-200 bg-white"
                         }`}
                       >
-                        <div className="flex justify-between gap-3">
+                        <div className="flex justify-between gap-4">
                           <div className="min-w-0 flex-1">
                             <p
                               title={item.name}
-                              className={`line-clamp-2 font-bold uppercase leading-snug ${
+                              className={`line-clamp-2 font-black uppercase leading-snug ${
                                 isVoidTransaction(selectedTransaction)
                                   ? "text-slate-400 line-through"
                                   : "text-slate-900"
@@ -416,27 +494,33 @@ function RiwayatTransaksi() {
                             {productColor && (
                               <p
                                 title={productColor}
-                                className="mt-0.5 line-clamp-2 text-xs font-black uppercase leading-tight text-blue-600"
+                                className="mt-1 line-clamp-2 text-xs font-black uppercase leading-tight text-blue-600"
                               >
                                 {productColor}
                               </p>
                             )}
 
-                            {variantValue && (
-                              <p className="mt-1 w-fit rounded-lg bg-blue-50 px-2 py-0.5 text-xs font-black text-emerald-700">
-                                Ukuran: {variantValue}
-                              </p>
-                            )}
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              {variantValue && (
+                                <span className="w-fit rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-black text-emerald-700">
+                                  Ukuran: {variantValue}
+                                </span>
+                              )}
+
+                              <span className="w-fit rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">
+                                Qty: {qty}
+                              </span>
+                            </div>
 
                             {(sku || barcode) && (
-                              <p className="mt-1 line-clamp-1 text-[11px] font-medium text-slate-400">
+                              <p className="mt-2 break-words text-[11px] font-semibold text-slate-400">
                                 {sku && `SKU: ${sku}`}
                                 {sku && barcode && " • "}
                                 {barcode && `Barcode: ${barcode}`}
                               </p>
                             )}
 
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-2 text-xs font-semibold text-slate-500">
                               {qty} x {formatRupiah(price)}
                             </p>
 
@@ -448,7 +532,7 @@ function RiwayatTransaksi() {
                           </div>
 
                           <p
-                            className={`shrink-0 text-right font-bold ${
+                            className={`shrink-0 text-right font-black ${
                               isVoidTransaction(selectedTransaction)
                                 ? "text-slate-400 line-through"
                                 : "text-slate-900"
@@ -459,7 +543,7 @@ function RiwayatTransaksi() {
                         </div>
 
                         {discount > 0 && (
-                          <p className="mt-2 text-xs font-semibold text-red-500">
+                          <p className="mt-3 text-xs font-bold text-red-500">
                             Diskon {discount}% - {formatRupiah(discountAmount)}
                           </p>
                         )}
@@ -468,30 +552,34 @@ function RiwayatTransaksi() {
                   })}
                 </div>
 
-                <div className="mt-4 space-y-2 border-t border-slate-200 pt-4 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Total Diskon Produk</span>
-                    <span>
-                      - {formatRupiah(selectedTransaction.totalDiscount)}
-                    </span>
-                  </div>
+                <div className="mt-4 rounded-[20px] border border-slate-200 bg-slate-50 p-4 text-sm">
+                  <div className="space-y-2">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-slate-500">
+                        Total Diskon Produk
+                      </span>
+                      <span className="font-bold text-slate-900">
+                        - {formatRupiah(selectedTransaction.totalDiscount)}
+                      </span>
+                    </div>
 
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Diskon Member</span>
-                    <span>
-                      - {formatRupiah(selectedTransaction.memberDiscount)}
-                    </span>
-                  </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-slate-500">Diskon Member</span>
+                      <span className="font-bold text-slate-900">
+                        - {formatRupiah(selectedTransaction.memberDiscount)}
+                      </span>
+                    </div>
 
-                  <div
-                    className={`flex justify-between border-t border-slate-200 pt-3 text-base font-bold ${
-                      isVoidTransaction(selectedTransaction)
-                        ? "text-slate-400 line-through"
-                        : ""
-                    }`}
-                  >
-                    <span>Total</span>
-                    <span>{formatRupiah(selectedTransaction.total)}</span>
+                    <div
+                      className={`flex justify-between gap-4 border-t border-slate-200 pt-3 text-lg font-black ${
+                        isVoidTransaction(selectedTransaction)
+                          ? "text-slate-400 line-through"
+                          : "text-slate-900"
+                      }`}
+                    >
+                      <span>Total</span>
+                      <span>{formatRupiah(selectedTransaction.total)}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -499,7 +587,7 @@ function RiwayatTransaksi() {
                   <button
                     onClick={() => handlePrintReceipt(selectedTransaction)}
                     disabled={isVoidTransaction(selectedTransaction)}
-                    className="rounded-xl bg-slate-900 py-3 text-sm font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                    className="rounded-2xl bg-slate-900 py-3 text-sm font-black text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
                   >
                     Cetak
                   </button>
@@ -507,14 +595,14 @@ function RiwayatTransaksi() {
                   <button
                     onClick={() => handleVoidTransaction(selectedTransaction)}
                     disabled={isVoidTransaction(selectedTransaction)}
-                    className="rounded-xl bg-red-600 py-3 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-100 disabled:text-red-300"
+                    className="rounded-2xl bg-red-600 py-3 text-sm font-black text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-100 disabled:text-red-300"
                   >
                     Void
                   </button>
 
                   <button
                     onClick={() => setSelectedTransaction(null)}
-                    className="rounded-xl border border-slate-200 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                    className="rounded-2xl border border-slate-200 py-3 text-sm font-black text-slate-700 hover:bg-slate-50"
                   >
                     Tutup
                   </button>
