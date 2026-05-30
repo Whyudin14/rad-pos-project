@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import MainLayout from "../layouts/MainLayout"
 import {
   getTransactions,
@@ -10,6 +10,12 @@ function RiwayatTransaksi() {
   const [transactions, setTransactions] = useState([])
   const [selectedTransaction, setSelectedTransaction] = useState(null)
   const [printTransaction, setPrintTransaction] = useState(null)
+
+  const [searchKeyword, setSearchKeyword] = useState("")
+  const [statusFilter, setStatusFilter] = useState("Semua")
+  const [paymentFilter, setPaymentFilter] = useState("Semua")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
 
   const loadTransactions = () => {
     const savedTransactions = getTransactions()
@@ -48,6 +54,57 @@ function RiwayatTransaksi() {
         return total + Number(item.qty || 0)
       }, 0) || 0
     )
+  }
+
+  const filteredTransactions = useMemo(() => {
+    const keyword = searchKeyword.trim().toLowerCase()
+
+    return transactions.filter((transaction) => {
+      const invoice = String(transaction.invoiceNumber || "").toLowerCase()
+      const paymentMethod = transaction.paymentMethod || ""
+      const status = isVoidTransaction(transaction) ? "Void" : "Lunas"
+
+      const transactionDate = transaction.date
+        ? new Date(transaction.date)
+        : null
+
+      const matchKeyword = !keyword || invoice.includes(keyword)
+
+      const matchStatus =
+        statusFilter === "Semua" || status === statusFilter
+
+      const matchPayment =
+        paymentFilter === "Semua" || paymentMethod === paymentFilter
+
+      let matchStartDate = true
+      let matchEndDate = true
+
+      if (startDate && transactionDate) {
+        const start = new Date(`${startDate}T00:00:00`)
+        matchStartDate = transactionDate >= start
+      }
+
+      if (endDate && transactionDate) {
+        const end = new Date(`${endDate}T23:59:59`)
+        matchEndDate = transactionDate <= end
+      }
+
+      return (
+        matchKeyword &&
+        matchStatus &&
+        matchPayment &&
+        matchStartDate &&
+        matchEndDate
+      )
+    })
+  }, [transactions, searchKeyword, statusFilter, paymentFilter, startDate, endDate])
+
+  const resetFilters = () => {
+    setSearchKeyword("")
+    setStatusFilter("Semua")
+    setPaymentFilter("Semua")
+    setStartDate("")
+    setEndDate("")
   }
 
   const handleVoidTransaction = (transaction) => {
@@ -227,6 +284,108 @@ function RiwayatTransaksi() {
             </div>
           </div>
 
+          {/* FILTER */}
+          <div className="mb-5 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-sm font-black text-slate-900">
+                  Filter Transaksi
+                </p>
+                <p className="text-xs font-medium text-slate-400">
+                  Cari invoice, status, metode pembayaran, atau rentang tanggal.
+                </p>
+              </div>
+
+              <p className="text-xs font-bold text-slate-500">
+                Menampilkan{" "}
+                <span className="text-blue-600">
+                  {filteredTransactions.length}
+                </span>{" "}
+                dari {transactions.length} transaksi
+              </p>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-[1.5fr_0.8fr_0.9fr_0.9fr_0.9fr_auto]">
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Cari Invoice
+                </label>
+                <input
+                  type="text"
+                  value={searchKeyword}
+                  onChange={(event) => setSearchKeyword(event.target.value)}
+                  placeholder="Contoh: RAD-20260530"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Status
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none transition focus:border-blue-400 focus:bg-white"
+                >
+                  <option value="Semua">Semua</option>
+                  <option value="Lunas">Lunas</option>
+                  <option value="Void">Void</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Metode
+                </label>
+                <select
+                  value={paymentFilter}
+                  onChange={(event) => setPaymentFilter(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none transition focus:border-blue-400 focus:bg-white"
+                >
+                  <option value="Semua">Semua</option>
+                  <option value="Cash">Cash</option>
+                  <option value="QRIS">QRIS</option>
+                  <option value="Transfer">Transfer</option>
+                  <option value="Debit">Debit</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Dari Tanggal
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(event) => setStartDate(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none transition focus:border-blue-400 focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Sampai Tanggal
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none transition focus:border-blue-400 focus:bg-white"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  onClick={resetFilters}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-600 transition hover:bg-slate-50 lg:w-auto"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+
           {transactions.length === 0 ? (
             <div className="rounded-[26px] border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
               <p className="text-sm font-bold text-slate-700">
@@ -235,6 +394,22 @@ function RiwayatTransaksi() {
               <p className="mt-1 text-sm text-slate-400">
                 Transaksi akan muncul setelah pembayaran berhasil.
               </p>
+            </div>
+          ) : filteredTransactions.length === 0 ? (
+            <div className="rounded-[26px] border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
+              <p className="text-sm font-bold text-slate-700">
+                Transaksi tidak ditemukan.
+              </p>
+              <p className="mt-1 text-sm text-slate-400">
+                Coba ubah keyword, status, metode, atau tanggal filter.
+              </p>
+
+              <button
+                onClick={resetFilters}
+                className="mt-4 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white transition hover:bg-blue-700"
+              >
+                Reset Filter
+              </button>
             </div>
           ) : (
             <div className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-sm">
@@ -248,7 +423,7 @@ function RiwayatTransaksi() {
               </div>
 
               <div className="divide-y divide-slate-100">
-                {transactions.map((transaction, index) => {
+                {filteredTransactions.map((transaction, index) => {
                   const isVoid = isVoidTransaction(transaction)
 
                   return (
