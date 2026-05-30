@@ -56,22 +56,46 @@ function CheckoutModal({
           customPrice - (customPrice * discountPercent) / 100
 
         return {
-          id: item.id,
-          cartId: item.cartId,
-          name: item.name,
-          category: item.category,
+          // ID penting untuk Void / Koreksi Transaksi
+          productId: item.productId || item.id || "",
+          variantId: item.variantId || item.cartId || "",
 
-          variantType: item.variantType || null,
-          variantValue: item.variantValue || null,
+          // ID lama tetap disimpan biar data lama/komponen lama tetap aman
+          id: item.id || item.productId || "",
+          cartId: item.cartId || "",
+
+          // Data produk
+          name: item.name || "",
+          displayName: item.displayName || item.name || "",
+          category: item.category || "",
+          brand: item.brand || "",
+          color: item.color || "",
+
+          // Data varian
+          variantType: item.variantType || "Ukuran",
+          variantValue: item.variantValue || item.ukuran || "",
+          ukuran: item.ukuran || item.variantValue || "",
           variantStock: item.variantStock ?? null,
 
+          // SKU / Barcode
+          sku: item.sku || "",
+          barcode: item.barcode || "",
+          productSku: item.productSku || "",
+          productBarcode: item.productBarcode || "",
+          variantSku: item.variantSku || "",
+          variantBarcode: item.variantBarcode || "",
+
+          // Data harga dan transaksi item
           qty,
-          originalPrice: item.price,
+          originalPrice: Number(item.originalPrice || item.price || 0),
           customPrice,
           discountPercent,
           priceAfterDiscount,
           note: item.note || "",
           total: priceAfterDiscount * qty,
+
+          // Pondasi koreksi item nanti
+          status: "sold",
         }
       }),
         subtotalBeforeMember,
