@@ -2,13 +2,13 @@ import { useLocation, useNavigate } from "react-router-dom"
 
 const menuItems = [
   { name: "Dashboard", icon: "🏠", path: "/" },
-  { name: "Produk", icon: "👟" },
-  { name: "Kategori", icon: "🏷️" },
+  { name: "Produk", icon: "👟", path: "/produk" },
+  { name: "Kategori", icon: "🏷️", path: "/kategori" },
   { name: "Stok Barang", icon: "📦", path: "/stok-barang" },
   { name: "POS / Kasir", icon: "🧾", path: "/kasir" },
   { name: "Riwayat Penjualan", icon: "📊", path: "/riwayat-transaksi" },
-  { name: "Settlement", icon: "💰" },
-  { name: "Pengaturan", icon: "⚙️" },
+  { name: "Settlement", icon: "💰", path: "/settlement" },
+  { name: "Pengaturan", icon: "⚙️", path: "/pengaturan" },
 ]
 
 function Sidebar() {
