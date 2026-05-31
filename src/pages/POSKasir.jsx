@@ -363,6 +363,43 @@ function POSKasir() {
     return total + Number(item.qty || 0)
   }, 0)
 
+  const validateCartStock = () => {
+    const invalidItem = cart.find((item) => {
+      const qty = Number(item.qty || 0)
+      const stock = Number(item.variantStock ?? item.stock ?? 0)
+
+      return stock > 0 && qty > stock
+    })
+
+    if (invalidItem) {
+      const variantLabel =
+        invalidItem.variantValue || invalidItem.ukuran
+          ? ` ukuran ${invalidItem.variantValue || invalidItem.ukuran}`
+          : ""
+
+      alert(
+        `Qty produk "${invalidItem.name}"${variantLabel} melebihi stok tersedia.\n\nStok tersedia: ${
+          invalidItem.variantStock ?? invalidItem.stock ?? 0
+        }\nQty di keranjang: ${invalidItem.qty}`
+      )
+
+      setSelectedCartItem(invalidItem)
+      return false
+    }
+
+    return true
+  }
+
+  const handleOpenCheckout = () => {
+    if (cart.length === 0) return
+
+    const isCartValid = validateCartStock()
+
+    if (!isCartValid) return
+
+    setIsCheckoutOpen(true)
+  }
+
   const handleFinishTransaction = (transaction) => {
     const newTransaction = {
       ...transaction,
@@ -784,7 +821,7 @@ function POSKasir() {
               </div>
 
               <button
-                onClick={() => setIsCheckoutOpen(true)}
+                onClick={handleOpenCheckout}
                 disabled={cart.length === 0}
                 className="w-full rounded-2xl bg-blue-600 py-3.5 font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
               >

@@ -21,10 +21,181 @@ export const setTransactions = (transactions) => {
   }
 }
 
+const getProducts = () => {
+  try {
+    const data = localStorage.getItem(PRODUCT_KEY)
+    return data ? JSON.parse(data) : []
+  } catch (error) {
+    console.error("Gagal membaca produk:", error)
+    return []
+  }
+}
+
+const saveProducts = (products) => {
+  try {
+    localStorage.setItem(PRODUCT_KEY, JSON.stringify(products))
+    return products
+  } catch (error) {
+    console.error("Gagal menyimpan produk:", error)
+    return []
+  }
+}
+
+const getItemVariantValue = (item) => {
+  return item.variantValue || item.ukuran || item.size || item.value || ""
+}
+
+const isSameProduct = (item, product) => {
+  return (
+    item.productId === product.id ||
+    item.id === product.id ||
+    item.productId === product.productId
+  )
+}
+
+const isSameVariant = (item, product, variant) => {
+  const itemVariantValue = getItemVariantValue(item)
+
+  return (
+    item.variantId === variant.id ||
+    item.variantId === variant.variantId ||
+    item.cartId === `${product.id}-${variant.id}` ||
+    item.cartId === `${product.productId}-${variant.id}` ||
+    itemVariantValue === variant.value ||
+    itemVariantValue === variant.ukuran ||
+    itemVariantValue === variant.size
+  )
+}
+
+export const reduceStockFromTransaction = (transaction) => {
+  try {
+    if (!transaction?.items || transaction.items.length === 0) {
+      return getProducts()
+    }
+
+    if (transaction.stockReduced) {
+      return getProducts()
+    }
+
+    if (transaction.status === "Void") {
+      return getProducts()
+    }
+
+    const products = getProducts()
+
+    const reducedProducts = products.map((product) => {
+      const matchedItems = transaction.items.filter((item) => {
+        return isSameProduct(item, product)
+      })
+
+      if (matchedItems.length === 0) return product
+
+      const updatedVariants = Array.isArray(product.variants)
+        ? product.variants.map((variant) => {
+            const matchedItem = matchedItems.find((item) => {
+              return isSameVariant(item, product, variant)
+            })
+
+            if (!matchedItem) return variant
+
+            const currentStock = Number(variant.stock || variant.stok || 0)
+            const soldQty = Number(matchedItem.qty || 0)
+            const newStock = Math.max(currentStock - soldQty, 0)
+
+            return {
+              ...variant,
+              stock: newStock,
+            }
+          })
+        : []
+
+      const totalStock = updatedVariants.reduce((sum, variant) => {
+        return sum + Number(variant.stock || variant.stok || 0)
+      }, 0)
+
+      return {
+        ...product,
+        stock: totalStock,
+        variants: updatedVariants,
+        updatedAt: new Date().toISOString(),
+      }
+    })
+
+    saveProducts(reducedProducts)
+
+    return reducedProducts
+  } catch (error) {
+    console.error("Gagal mengurangi stok transaksi:", error)
+    return getProducts()
+  }
+}
+
+export const restoreStockFromTransaction = (transaction) => {
+  try {
+    if (!transaction?.items || transaction.items.length === 0) {
+      return getProducts()
+    }
+
+    const products = getProducts()
+
+    const restoredProducts = products.map((product) => {
+      const matchedItems = transaction.items.filter((item) => {
+        return isSameProduct(item, product)
+      })
+
+      if (matchedItems.length === 0) return product
+
+      const updatedVariants = Array.isArray(product.variants)
+        ? product.variants.map((variant) => {
+            const matchedItem = matchedItems.find((item) => {
+              return isSameVariant(item, product, variant)
+            })
+
+            if (!matchedItem) return variant
+
+            const currentStock = Number(variant.stock || variant.stok || 0)
+            const restoreQty = Number(matchedItem.qty || 0)
+
+            return {
+              ...variant,
+              stock: currentStock + restoreQty,
+            }
+          })
+        : []
+
+      const totalStock = updatedVariants.reduce((sum, variant) => {
+        return sum + Number(variant.stock || variant.stok || 0)
+      }, 0)
+
+      return {
+        ...product,
+        stock: totalStock,
+        variants: updatedVariants,
+        updatedAt: new Date().toISOString(),
+      }
+    })
+
+    saveProducts(restoredProducts)
+
+    return restoredProducts
+  } catch (error) {
+    console.error("Gagal restore stok transaksi:", error)
+    return getProducts()
+  }
+}
+
 export const saveTransaction = (transaction) => {
   try {
+    const transactionWithStockInfo = {
+      ...transaction,
+      stockReduced: true,
+      stockReducedAt: new Date().toISOString(),
+    }
+
+    reduceStockFromTransaction(transaction)
+
     const transactions = getTransactions()
-    const updatedTransactions = [transaction, ...transactions]
+    const updatedTransactions = [transactionWithStockInfo, ...transactions]
 
     localStorage.setItem(TRANSACTION_KEY, JSON.stringify(updatedTransactions))
 
@@ -73,94 +244,6 @@ export const updateTransaction = (transactionId, updatedData) => {
   }
 }
 
-const getProducts = () => {
-  try {
-    const data = localStorage.getItem(PRODUCT_KEY)
-    return data ? JSON.parse(data) : []
-  } catch (error) {
-    console.error("Gagal membaca produk:", error)
-    return []
-  }
-}
-
-const saveProducts = (products) => {
-  try {
-    localStorage.setItem(PRODUCT_KEY, JSON.stringify(products))
-    return products
-  } catch (error) {
-    console.error("Gagal menyimpan produk:", error)
-    return []
-  }
-}
-
-export const restoreStockFromTransaction = (transaction) => {
-  try {
-    if (!transaction?.items || transaction.items.length === 0) {
-      return getProducts()
-    }
-
-    const products = getProducts()
-
-    const restoredProducts = products.map((product) => {
-      const matchedItems = transaction.items.filter((item) => {
-        return (
-          item.productId === product.id ||
-          item.id === product.id ||
-          item.productId === product.productId
-        )
-      })
-
-      if (matchedItems.length === 0) return product
-
-      const updatedVariants = Array.isArray(product.variants)
-        ? product.variants.map((variant) => {
-            const matchedItem = matchedItems.find((item) => {
-              const itemVariantValue =
-                item.variantValue || item.ukuran || item.size || ""
-
-              return (
-                item.variantId === variant.id ||
-                item.variantId === variant.variantId ||
-                item.cartId === `${product.id}-${variant.id}` ||
-                itemVariantValue === variant.value ||
-                itemVariantValue === variant.ukuran ||
-                itemVariantValue === variant.size
-              )
-            })
-
-            if (!matchedItem) return variant
-
-            const currentStock = Number(variant.stock || variant.stok || 0)
-            const restoreQty = Number(matchedItem.qty || 0)
-
-            return {
-              ...variant,
-              stock: currentStock + restoreQty,
-            }
-          })
-        : []
-
-      const totalStock = updatedVariants.reduce((sum, variant) => {
-        return sum + Number(variant.stock || variant.stok || 0)
-      }, 0)
-
-      return {
-        ...product,
-        stock: totalStock,
-        variants: updatedVariants,
-        updatedAt: new Date().toISOString(),
-      }
-    })
-
-    saveProducts(restoredProducts)
-
-    return restoredProducts
-  } catch (error) {
-    console.error("Gagal restore stok transaksi:", error)
-    return getProducts()
-  }
-}
-
 export const voidTransaction = ({
   transactionId,
   reason = "",
@@ -184,6 +267,11 @@ export const voidTransaction = ({
 
     if (targetTransaction.status === "Void") {
       alert("Transaksi ini sudah di-void sebelumnya")
+      return transactions
+    }
+
+    if (restoreStock && targetTransaction.stockRestored) {
+      alert("Stok transaksi ini sudah pernah dikembalikan")
       return transactions
     }
 
