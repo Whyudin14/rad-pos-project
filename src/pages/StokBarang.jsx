@@ -14,6 +14,7 @@ import SessionHistoryModal from "../components/stock-opname/SessionHistoryModal"
 function StokBarang() {
   const [searchTerm, setSearchTerm] = useState("")
   const [stockFilter, setStockFilter] = useState("Semua")
+  const [productStatusFilter, setProductStatusFilter] = useState("Semua")
   const [productViewMode, setProductViewMode] = useState("Semua")
   const [expandedProductId, setExpandedProductId] = useState(null)
   const [productList, setProductList] = useState([])
@@ -81,6 +82,7 @@ function StokBarang() {
   ]
 
   const stockFilters = ["Semua", "Aman", "Menipis", "Kosong"]
+  const productStatusFilters = ["Semua", "Aktif", "Nonaktif"]
   const opnameHistoryFilters = ["Semua", "Sesuai", "Lebih", "Kurang"]
 
   const opnameHistorySessionFilters = [
@@ -194,6 +196,24 @@ function StokBarang() {
     }
   }
 
+  const isProductActive = (product) => {
+    return product.isActive !== false
+  }
+
+  const getProductStatusData = (product) => {
+    if (isProductActive(product)) {
+      return {
+        label: "Aktif",
+        badgeClass: "bg-emerald-50 text-emerald-600 border-emerald-100",
+      }
+    }
+
+    return {
+      label: "Nonaktif",
+      badgeClass: "bg-slate-100 text-slate-500 border-slate-200",
+    }
+  }
+
   const getOpnameStatusClass = (status) => {
     if (status === "Sesuai") {
       return "bg-emerald-50 text-emerald-600 border-emerald-100"
@@ -288,6 +308,7 @@ function StokBarang() {
     const productStock = getTotalStock(product)
     const minimumStock = getMinimumStock(product)
     const stockStatus = getStockStatus(productStock, minimumStock)
+    const productActive = isProductActive(product)
 
     const matchProduct =
       product.name?.toLowerCase().includes(keyword) ||
@@ -309,10 +330,20 @@ function StokBarang() {
     const matchFilter =
       stockFilter === "Semua" || stockStatus.label === stockFilter
 
+    const matchProductStatus =
+      productStatusFilter === "Semua" ||
+      (productStatusFilter === "Aktif" && productActive) ||
+      (productStatusFilter === "Nonaktif" && !productActive)
+
     const matchSessionMode =
       productViewMode === "Semua" || isProductMatchActiveSession(product)
 
-    return (matchProduct || matchVariant) && matchFilter && matchSessionMode
+    return (
+      (matchProduct || matchVariant) &&
+      matchFilter &&
+      matchProductStatus &&
+      matchSessionMode
+    )
   })
 
   const stockOpnameSessionSummaries = useMemo(() => {
@@ -647,18 +678,63 @@ function StokBarang() {
   }
 
   const saveNewProduct = (newProduct) => {
-    const updatedProducts = [newProduct, ...productList]
+    const productWithStatus = {
+      ...newProduct,
+      isActive: newProduct.isActive ?? true,
+    }
+
+    const updatedProducts = [productWithStatus, ...productList]
 
     localStorage.setItem("radProducts", JSON.stringify(updatedProducts))
     setProductList(updatedProducts)
     setShowAddProduct(false)
-    setExpandedProductId(newProduct.id)
+    setExpandedProductId(productWithStatus.id)
     showSuccessNotification("Produk baru berhasil ditambahkan.")
+  }
+
+  const toggleProductActive = (product) => {
+    const currentlyActive = isProductActive(product)
+
+    if (currentlyActive) {
+      const confirmInactive = window.confirm(
+        `Nonaktifkan produk "${product.name}"?
+
+Produk tidak akan muncul di POS Kasir, tapi data produk dan riwayat transaksi lama tetap aman.`
+      )
+
+      if (!confirmInactive) return
+    }
+
+    const updatedProducts = productList.map((item) => {
+      if (item.id !== product.id) return item
+
+      return {
+        ...item,
+        isActive: !currentlyActive,
+        updatedAt: new Date().toISOString(),
+      }
+    })
+
+    localStorage.setItem("radProducts", JSON.stringify(updatedProducts))
+    setProductList(updatedProducts)
+
+    showSuccessNotification(
+      currentlyActive
+        ? "Produk berhasil dinonaktifkan."
+        : "Produk berhasil diaktifkan kembali."
+    )
   }
 
   const saveEditedProduct = (updatedProduct) => {
     const updatedProducts = productList.map((product) => {
-      return product.id === updatedProduct.id ? updatedProduct : product
+      if (product.id !== updatedProduct.id) return product
+
+      return {
+        ...product,
+        ...updatedProduct,
+        isActive: updatedProduct.isActive ?? product.isActive ?? true,
+        updatedAt: new Date().toISOString(),
+      }
     })
 
     localStorage.setItem("radProducts", JSON.stringify(updatedProducts))
@@ -791,6 +867,26 @@ function StokBarang() {
             </div>
 
             <div className="flex flex-wrap gap-2">
+              {productStatusFilters.map((filter) => {
+                const isActive = productStatusFilter === filter
+
+                return (
+                  <button
+                    key={filter}
+                    onClick={() => setProductStatusFilter(filter)}
+                    className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
+                      isActive
+                        ? "bg-slate-900 text-white"
+                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setProductViewMode("Semua")}
                 className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
@@ -860,9 +956,14 @@ function StokBarang() {
                     productStock,
                     minimumStock
                   )
+                  const productStatus = getProductStatusData(product)
+                  const productActive = isProductActive(product)
 
                   return (
-                    <div key={product.id} className="bg-white">
+                    <div
+                      key={product.id}
+                      className={productActive ? "bg-white" : "bg-slate-50"}
+                    >
                       <div className="grid gap-4 px-4 py-4 xl:grid-cols-[1.5fr_0.8fr_0.7fr_0.7fr_0.7fr_auto] xl:items-center">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -874,6 +975,12 @@ function StokBarang() {
                               className={`rounded-full border px-2.5 py-1 text-xs font-black ${stockStatus.badgeClass}`}
                             >
                               {stockStatus.label}
+                            </span>
+
+                            <span
+                              className={`rounded-full border px-2.5 py-1 text-xs font-black ${productStatus.badgeClass}`}
+                            >
+                              {productStatus.label}
                             </span>
                           </div>
 
@@ -950,6 +1057,7 @@ function StokBarang() {
                           getStockStatus={getStockStatus}
                           openStockOpnameModal={openStockOpnameModal}
                           onEditProduct={setSelectedEditProduct}
+                          onToggleProductActive={toggleProductActive}
                         />
                       )}
                     </div>
@@ -1244,6 +1352,7 @@ function ProductDetail({
   getStockStatus,
   openStockOpnameModal,
   onEditProduct,
+  onToggleProductActive,
 }) {
   return (
     <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
@@ -1289,12 +1398,25 @@ function ProductDetail({
           </p>
         </div>
 
-        <button
-          onClick={() => onEditProduct(product)}
-          className="rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-blue-700"
-        >
-          Edit Produk
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            onClick={() => onEditProduct(product)}
+            className="rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-blue-700"
+          >
+            Edit Produk
+          </button>
+
+          <button
+            onClick={() => onToggleProductActive(product)}
+            className={`rounded-2xl px-4 py-2.5 text-sm font-black transition ${
+              product.isActive === false
+                ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                : "bg-red-50 text-red-600 hover:bg-red-100"
+            }`}
+          >
+            {product.isActive === false ? "Aktifkan Lagi" : "Nonaktifkan"}
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">

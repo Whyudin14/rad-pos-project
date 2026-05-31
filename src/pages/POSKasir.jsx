@@ -61,62 +61,62 @@ function POSKasir() {
   }
 
   const splitProductNameAndColor = (rawName = "") => {
-  const name = String(rawName || "").trim()
+    const name = String(rawName || "").trim()
 
-  if (!name.includes(" - ")) {
+    if (!name.includes(" - ")) {
+      return {
+        displayName: name,
+        color: "",
+      }
+    }
+
+    const parts = name.split(" - ")
+    const displayName = parts[0]?.trim() || name
+    const color = parts.slice(1).join(" - ").trim()
+
     return {
-      displayName: name,
-      color: "",
+      displayName,
+      color,
     }
   }
 
-  const parts = name.split(" - ")
-  const displayName = parts[0]?.trim() || name
-  const color = parts.slice(1).join(" - ").trim()
+  const normalizeProductForPOS = (product) => {
+    const variants = Array.isArray(product.variants) ? product.variants : []
 
-  return {
-    displayName,
-    color,
+    const totalStock = variants.reduce((sum, variant) => {
+      return sum + getVariantStock(variant)
+    }, 0)
+
+    const variantPrices = variants
+      .map((variant) => getVariantPrice(product, variant))
+      .filter((price) => price > 0)
+
+    const lowestPrice =
+      variantPrices.length > 0
+        ? Math.min(...variantPrices)
+        : Number(product.price || product.hargaJual || 0)
+
+    const rawName =
+      product.name || product.namaProduk || product.productName || "-"
+
+    const productColor =
+      product.color || product.warna || product.productColor || ""
+
+    const parsedProduct = splitProductNameAndColor(rawName)
+
+    return {
+      ...product,
+      id: product.id || product.productId || crypto.randomUUID(),
+      name: rawName,
+      displayName: parsedProduct.displayName,
+      color: productColor || parsedProduct.color,
+      brand: product.brand || product.merek || "",
+      category: product.category || product.kategori || "Tanpa Kategori",
+      price: lowestPrice,
+      stock: totalStock,
+      variants,
+    }
   }
-}
-
-const normalizeProductForPOS = (product) => {
-  const variants = Array.isArray(product.variants) ? product.variants : []
-
-  const totalStock = variants.reduce((sum, variant) => {
-    return sum + getVariantStock(variant)
-  }, 0)
-
-  const variantPrices = variants
-    .map((variant) => getVariantPrice(product, variant))
-    .filter((price) => price > 0)
-
-  const lowestPrice =
-    variantPrices.length > 0
-      ? Math.min(...variantPrices)
-      : Number(product.price || product.hargaJual || 0)
-
-  const rawName =
-    product.name || product.namaProduk || product.productName || "-"
-
-  const productColor =
-    product.color || product.warna || product.productColor || ""
-
-  const parsedProduct = splitProductNameAndColor(rawName)
-
-  return {
-    ...product,
-    id: product.id || product.productId || crypto.randomUUID(),
-    name: rawName,
-    displayName: parsedProduct.displayName,
-    color: productColor || parsedProduct.color,
-    brand: product.brand || product.merek || "",
-    category: product.category || product.kategori || "Tanpa Kategori",
-    price: lowestPrice,
-    stock: totalStock,
-    variants,
-  }
-}
 
   const loadProductsFromStorage = () => {
     try {
@@ -130,7 +130,12 @@ const normalizeProductForPOS = (product) => {
       }
 
       const activeProducts = storedProducts
-        .filter((product) => product.showInPOS === true)
+        .filter((product) => {
+          const isActive = product.isActive !== false
+          const showInPOS = product.showInPOS !== false
+
+          return isActive && showInPOS
+        })
         .map(normalizeProductForPOS)
 
       setProducts(activeProducts)
@@ -147,10 +152,18 @@ const normalizeProductForPOS = (product) => {
       loadProductsFromStorage()
     }
 
+    const handleStorageChange = (event) => {
+      if (event.key === PRODUCT_STORAGE_KEY) {
+        loadProductsFromStorage()
+      }
+    }
+
     window.addEventListener("focus", handleFocus)
+    window.addEventListener("storage", handleStorageChange)
 
     return () => {
       window.removeEventListener("focus", handleFocus)
+      window.removeEventListener("storage", handleStorageChange)
     }
   }, [])
 
@@ -570,20 +583,20 @@ const normalizeProductForPOS = (product) => {
     const keyword = searchTerm.toLowerCase()
 
     const matchSearch =
-    product.name.toLowerCase().includes(keyword) ||
-    product.displayName?.toLowerCase().includes(keyword) ||
-    product.color?.toLowerCase().includes(keyword) ||
-    product.category.toLowerCase().includes(keyword) ||
-    product.brand?.toLowerCase().includes(keyword) ||
-    product.sku?.toLowerCase().includes(keyword) ||
-    product.barcode?.includes(searchTerm) ||
-    product.variants?.some((variant) => {
-      return (
-        String(variant.sku || "").toLowerCase().includes(keyword) ||
-        String(variant.barcode || "").includes(searchTerm) ||
-        String(getVariantValue(variant)).toLowerCase().includes(keyword)
-      )
-    })
+      product.name?.toLowerCase().includes(keyword) ||
+      product.displayName?.toLowerCase().includes(keyword) ||
+      product.color?.toLowerCase().includes(keyword) ||
+      product.category?.toLowerCase().includes(keyword) ||
+      product.brand?.toLowerCase().includes(keyword) ||
+      product.sku?.toLowerCase().includes(keyword) ||
+      product.barcode?.includes(searchTerm) ||
+      product.variants?.some((variant) => {
+        return (
+          String(variant.sku || "").toLowerCase().includes(keyword) ||
+          String(variant.barcode || "").includes(searchTerm) ||
+          String(getVariantValue(variant)).toLowerCase().includes(keyword)
+        )
+      })
 
     const matchCategory =
       selectedCategory === "All" || product.category === selectedCategory
@@ -664,8 +677,8 @@ const normalizeProductForPOS = (product) => {
                   Produk POS tidak ditemukan
                 </p>
                 <p className="mt-1 max-w-md text-sm text-slate-400">
-                  Pastikan produk di Stok Barang sudah aktif dan opsi tampil di
-                  POS sudah dinyalakan.
+                  Pastikan produk di Stok Barang masih aktif dan data produk
+                  sudah tersimpan.
                 </p>
               </div>
             ) : (
