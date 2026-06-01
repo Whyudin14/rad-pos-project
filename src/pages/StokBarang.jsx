@@ -825,14 +825,14 @@ Produk tidak akan muncul di POS Kasir, tapi data produk dan riwayat transaksi la
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="mb-5 grid gap-4 xl:grid-cols-[1fr_520px] xl:items-start">
             <div>
               <h2 className="text-xl font-black text-slate-900">
                 Data Barang
               </h2>
 
               <p className="mt-1 text-sm font-semibold text-slate-400">
-                Klik detail untuk melihat informasi barang dan stok per ukuran.
+                Cari barang, lihat stok per ukuran, dan lakukan SO dari detail produk.
               </p>
             </div>
 
@@ -841,98 +841,87 @@ Produk tidak akan muncul di POS Kasir, tapi data produk dan riwayat transaksi la
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Cari nama barang, SKU, barcode, ukuran, rak..."
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 xl:max-w-lg"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
             />
           </div>
 
-          <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {stockFilters.map((filter) => {
-                const isActive = stockFilter === filter
+          <div className="mb-4 rounded-3xl border border-slate-100 bg-slate-50 p-3">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex flex-wrap gap-2">
+                {stockFilters.map((filter) => {
+                  const isActive = stockFilter === filter
 
-                return (
+                  return (
+                    <button
+                      key={filter}
+                      onClick={() => setStockFilter(filter)}
+                      className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
+                        isActive
+                          ? "bg-slate-900 text-white shadow-sm"
+                          : "bg-white text-slate-500 hover:bg-slate-100"
+                      }`}
+                    >
+                      {filter}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between xl:justify-end">
+                <div className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2">
+                  <span className="text-xs font-black uppercase tracking-wide text-slate-400">
+                    Status
+                  </span>
+
+                  <select
+                    value={productStatusFilter}
+                    onChange={(e) => setProductStatusFilter(e.target.value)}
+                    className="bg-transparent text-sm font-black text-slate-700 outline-none"
+                  >
+                    {productStatusFilters.map((filter) => (
+                      <option key={filter} value={filter}>
+                        {filter}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex rounded-2xl bg-white p-1">
                   <button
-                    key={filter}
-                    onClick={() => setStockFilter(filter)}
-                    className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
-                      isActive
-                        ? "bg-slate-900 text-white"
-                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    onClick={() => setProductViewMode("Semua")}
+                    className={`rounded-xl px-3 py-2 text-xs font-black transition ${
+                      productViewMode === "Semua"
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "text-slate-500 hover:bg-slate-100"
                     }`}
                   >
-                    {filter}
+                    Semua Produk
                   </button>
-                )
-              })}
+
+                  {activeStockOpnameSession && (
+                    <button
+                      onClick={() => setProductViewMode("Sesuai Sesi")}
+                      className={`rounded-xl px-3 py-2 text-xs font-black transition ${
+                        productViewMode === "Sesuai Sesi"
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "text-emerald-600 hover:bg-emerald-50"
+                      }`}
+                    >
+                      Sesuai Sesi
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {productStatusFilters.map((filter) => {
-                const isActive = productStatusFilter === filter
-
-                return (
-                  <button
-                    key={filter}
-                    onClick={() => setProductStatusFilter(filter)}
-                    className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
-                      isActive
-                        ? "bg-slate-900 text-white"
-                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                    }`}
-                  >
-                    {filter}
-                  </button>
-                )
-              })}
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setProductViewMode("Semua")}
-                className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
-                  productViewMode === "Semua"
-                    ? "bg-blue-600 text-white"
-                    : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                }`}
-              >
-                Semua Produk
-              </button>
-
-              <button
-                onClick={() => {
-                  if (activeStockOpnameSession) {
-                    setProductViewMode("Sesuai Sesi")
-                  }
-                }}
-                disabled={!activeStockOpnameSession}
-                className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
-                  !activeStockOpnameSession
-                    ? "cursor-not-allowed bg-slate-100 text-slate-300"
-                    : productViewMode === "Sesuai Sesi"
-                    ? "bg-emerald-600 text-white"
-                    : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                }`}
-              >
-                Sesuai Sesi Aktif
-              </button>
-            </div>
+            {productViewMode === "Sesuai Sesi" && activeStockOpnameSession && (
+              <div className="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-bold leading-relaxed text-emerald-700">
+                Menampilkan {sessionProductsCount} produk kategori{" "}
+                {activeStockOpnameSession.categories?.join(", ")} untuk sesi{" "}
+                {activeStockOpnameSession.type}.
+              </div>
+            )}
           </div>
-
-          {productViewMode === "Sesuai Sesi" && activeStockOpnameSession && (
-            <div className="mb-4 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-bold leading-relaxed text-emerald-700">
-              Mode sesuai sesi aktif sedang digunakan. Menampilkan{" "}
-              {sessionProductsCount} produk kategori{" "}
-              {activeStockOpnameSession.categories?.join(", ")} untuk sesi{" "}
-              {activeStockOpnameSession.type}.
-            </div>
-          )}
-
-          {!activeStockOpnameSession && (
-            <div className="mb-4 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold leading-relaxed text-slate-500">
-              Buat sesi SO aktif untuk mengaktifkan mode filter produk sesuai
-              jadwal SO mingguan.
-            </div>
-          )}
 
           {filteredProducts.length === 0 ? (
             <EmptyState text="Produk tidak ditemukan" />

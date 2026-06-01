@@ -38,6 +38,7 @@ function EditProductModal({ product, onClose, onSave }) {
           barcode: variant.barcode || "",
           price: variant.price ?? "",
           minimumStock: variant.minimumStock ?? "",
+          isExisting: true,
         }))
       : [
           {
@@ -48,6 +49,7 @@ function EditProductModal({ product, onClose, onSave }) {
             barcode: product?.barcode || "",
             price: product?.price || "",
             minimumStock: product?.minimumStock || "",
+            isExisting: true,
           },
         ]
   )
@@ -97,6 +99,7 @@ function EditProductModal({ product, onClose, onSave }) {
         barcode: "",
         price: "",
         minimumStock: "",
+        isExisting: false,
       },
     ])
   }
@@ -104,6 +107,16 @@ function EditProductModal({ product, onClose, onSave }) {
   const removeVariantRow = (index) => {
     setVariants((current) => {
       if (current.length === 1) return current
+
+      const targetVariant = current[index]
+
+      if (targetVariant?.isExisting) {
+        alert(
+          "Varian lama tidak bisa dihapus permanen karena bisa berkaitan dengan transaksi dan void. Untuk sementara, ubah stok menjadi 0 jika varian sudah tidak dijual."
+        )
+
+        return current
+      }
 
       return current.filter((_, variantIndex) => variantIndex !== index)
     })
@@ -257,7 +270,10 @@ function EditProductModal({ product, onClose, onSave }) {
           </button>
         </div>
 
-        <form onSubmit={submitProduct} className="overflow-y-auto px-5 py-5 sm:px-6">
+        <form
+          onSubmit={submitProduct}
+          className="overflow-y-auto px-5 py-5 sm:px-6"
+        >
           <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-5">
               <SectionCard title="Informasi Produk">
@@ -397,6 +413,8 @@ function EditProductModal({ product, onClose, onSave }) {
                 </h3>
                 <p className="mt-1 text-xs font-semibold text-slate-400">
                   Ubah stok, SKU, barcode, harga, dan minimum stok per ukuran.
+                  Varian lama tidak bisa dihapus permanen agar riwayat transaksi
+                  dan void tetap aman.
                 </p>
               </div>
 
@@ -481,7 +499,12 @@ function EditProductModal({ product, onClose, onSave }) {
                       <button
                         type="button"
                         onClick={() => removeVariantRow(index)}
-                        disabled={variants.length === 1}
+                        disabled={variants.length === 1 || variant.isExisting}
+                        title={
+                          variant.isExisting
+                            ? "Varian lama tidak bisa dihapus permanen"
+                            : "Hapus varian baru"
+                        }
                         className="rounded-xl bg-red-50 px-3 py-2 text-xs font-black text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-300"
                       >
                         Hapus
@@ -490,6 +513,12 @@ function EditProductModal({ product, onClose, onSave }) {
                   ))}
                 </div>
               </div>
+            </div>
+
+            <div className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-xs font-bold leading-relaxed text-amber-700">
+              Catatan: varian lama tidak dihapus permanen untuk menjaga
+              kecocokan data transaksi, void, dan histori stok. Kalau varian
+              sudah tidak dijual, ubah stok menjadi 0.
             </div>
           </div>
 
