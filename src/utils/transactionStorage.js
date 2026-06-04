@@ -1,5 +1,6 @@
 const TRANSACTION_KEY = "radSportTransactions"
 const PRODUCT_KEY = "radProducts"
+const STOCK_MUTATION_KEY = "radStockMutations"
 
 export const getTransactions = () => {
   try {
@@ -18,6 +19,44 @@ export const setTransactions = (transactions) => {
   } catch (error) {
     console.error("Gagal menyimpan daftar transaksi:", error)
     return []
+  }
+}
+
+export const getStockMutations = () => {
+  try {
+    const data = localStorage.getItem(STOCK_MUTATION_KEY)
+    return data ? JSON.parse(data) : []
+  } catch (error) {
+    console.error("Gagal membaca mutasi stok:", error)
+    return []
+  }
+}
+
+export const setStockMutations = (mutations) => {
+  try {
+    localStorage.setItem(STOCK_MUTATION_KEY, JSON.stringify(mutations))
+    return mutations
+  } catch (error) {
+    console.error("Gagal menyimpan mutasi stok:", error)
+    return []
+  }
+}
+
+const addStockMutations = (newMutations = []) => {
+  try {
+    if (!Array.isArray(newMutations) || newMutations.length === 0) {
+      return getStockMutations()
+    }
+
+    const mutations = getStockMutations()
+    const updatedMutations = [...newMutations, ...mutations]
+
+    localStorage.setItem(STOCK_MUTATION_KEY, JSON.stringify(updatedMutations))
+
+    return updatedMutations
+  } catch (error) {
+    console.error("Gagal menambah mutasi stok:", error)
+    return getStockMutations()
   }
 }
 
@@ -67,6 +106,68 @@ const isSameVariant = (item, product, variant) => {
   )
 }
 
+const createMutationId = () => {
+  return `MUT-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+const getTransactionReference = (transaction) => {
+  return transaction.invoiceNumber || transaction.id || "-"
+}
+
+const createStockMutation = ({
+  type,
+  transaction,
+  product,
+  variant,
+  item,
+  qtyChange,
+  stockBefore,
+  stockAfter,
+  note = "",
+}) => {
+  const now = new Date().toISOString()
+  const variantValue =
+    variant.value ||
+    variant.ukuran ||
+    variant.size ||
+    item.variantValue ||
+    item.ukuran ||
+    item.size ||
+    "-"
+
+  return {
+    id: createMutationId(),
+    date: now,
+    type,
+    source: type === "SALE" ? "Transaksi POS" : "Void Transaksi",
+    sourceId: transaction.id || "",
+    invoiceNumber: transaction.invoiceNumber || "",
+    reference: getTransactionReference(transaction),
+
+    productId: product.id || product.productId || item.productId || "",
+    productName: product.name || item.productName || item.name || "-",
+    brand: product.brand || item.brand || "-",
+
+    variantId: variant.id || variant.variantId || item.variantId || "",
+    variantValue,
+    sku: variant.sku || item.sku || product.sku || "-",
+    rackLocation:
+      variant.rackLocation ||
+      variant.rak ||
+      item.rackLocation ||
+      product.rackLocation ||
+      "-",
+
+    qty: Math.abs(Number(qtyChange || 0)),
+    qtyChange: Number(qtyChange || 0),
+    stockBefore: Number(stockBefore || 0),
+    stockAfter: Number(stockAfter || 0),
+
+    note,
+    createdAt: now,
+  }
+}
+
 export const reduceStockFromTransaction = (transaction) => {
   try {
     if (!transaction?.items || transaction.items.length === 0) {
@@ -82,6 +183,7 @@ export const reduceStockFromTransaction = (transaction) => {
     }
 
     const products = getProducts()
+    const stockMutations = []
 
     const reducedProducts = products.map((product) => {
       const matchedItems = transaction.items.filter((item) => {
@@ -101,6 +203,24 @@ export const reduceStockFromTransaction = (transaction) => {
             const currentStock = Number(variant.stock || variant.stok || 0)
             const soldQty = Number(matchedItem.qty || 0)
             const newStock = Math.max(currentStock - soldQty, 0)
+
+            if (soldQty > 0) {
+              stockMutations.push(
+                createStockMutation({
+                  type: "SALE",
+                  transaction,
+                  product,
+                  variant,
+                  item: matchedItem,
+                  qtyChange: -soldQty,
+                  stockBefore: currentStock,
+                  stockAfter: newStock,
+                  note: `Stok berkurang karena transaksi ${getTransactionReference(
+                    transaction
+                  )}`,
+                })
+              )
+            }
 
             return {
               ...variant,
@@ -122,6 +242,7 @@ export const reduceStockFromTransaction = (transaction) => {
     })
 
     saveProducts(reducedProducts)
+    addStockMutations(stockMutations)
 
     return reducedProducts
   } catch (error) {
@@ -137,6 +258,7 @@ export const restoreStockFromTransaction = (transaction) => {
     }
 
     const products = getProducts()
+    const stockMutations = []
 
     const restoredProducts = products.map((product) => {
       const matchedItems = transaction.items.filter((item) => {
@@ -155,10 +277,29 @@ export const restoreStockFromTransaction = (transaction) => {
 
             const currentStock = Number(variant.stock || variant.stok || 0)
             const restoreQty = Number(matchedItem.qty || 0)
+            const newStock = currentStock + restoreQty
+
+            if (restoreQty > 0) {
+              stockMutations.push(
+                createStockMutation({
+                  type: "VOID_RESTORE",
+                  transaction,
+                  product,
+                  variant,
+                  item: matchedItem,
+                  qtyChange: restoreQty,
+                  stockBefore: currentStock,
+                  stockAfter: newStock,
+                  note: `Stok dikembalikan karena void transaksi ${getTransactionReference(
+                    transaction
+                  )}`,
+                })
+              )
+            }
 
             return {
               ...variant,
-              stock: currentStock + restoreQty,
+              stock: newStock,
             }
           })
         : []
@@ -176,6 +317,7 @@ export const restoreStockFromTransaction = (transaction) => {
     })
 
     saveProducts(restoredProducts)
+    addStockMutations(stockMutations)
 
     return restoredProducts
   } catch (error) {
