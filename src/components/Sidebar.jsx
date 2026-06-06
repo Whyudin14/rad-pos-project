@@ -1,14 +1,36 @@
 import { useLocation, useNavigate } from "react-router-dom"
 
-const menuItems = [
-  { name: "Dashboard", icon: "🏠", path: "/" },
-  { name: "Produk", icon: "👟", path: "/produk" },
-  { name: "Kategori", icon: "🏷️", path: "/kategori" },
-  { name: "Stok Barang", icon: "📦", path: "/stok-barang" },
-  { name: "POS / Kasir", icon: "🧾", path: "/kasir" },
-  { name: "Riwayat Penjualan", icon: "📊", path: "/riwayat-transaksi" },
-  { name: "Settlement", icon: "💰", path: "/settlement" },
-  { name: "Pengaturan", icon: "⚙️", path: "/pengaturan" },
+const menuSections = [
+  {
+    items: [{ name: "Dashboard", icon: "🏠", path: "/" }],
+  },
+  {
+    items: [
+      { name: "Produk", icon: "👟", path: "/produk" },
+      { name: "Kategori", icon: "🏷️", path: "/kategori" },
+    ],
+  },
+  {
+    title: "Manajemen Stok",
+    items: [
+      { name: "Data Barang", icon: "📋", path: "/data-barang" },
+      { name: "Stok Barang", icon: "📦", path: "/stok-barang" },
+      { name: "Stock Opname", icon: "✅", path: "/stock-opname" },
+      { name: "Mutasi Stok", icon: "🔁", path: "/mutasi-stok" },
+    ],
+  },
+  {
+    items: [
+      { name: "POS / Kasir", icon: "🧾", path: "/kasir" },
+      {
+        name: "Riwayat Penjualan",
+        icon: "📊",
+        path: "/riwayat-transaksi",
+      },
+      { name: "Settlement", icon: "💰", path: "/settlement" },
+      { name: "Pengaturan", icon: "⚙️", path: "/pengaturan" },
+    ],
+  },
 ]
 
 function Sidebar({ isCollapsed = false, onToggle }) {
@@ -84,33 +106,49 @@ function Sidebar({ isCollapsed = false, onToggle }) {
         </div>
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-5">
-          <nav className="space-y-2">
-            {menuItems.map((item) => {
-              const isActive = isMenuActive(item.path)
+          <nav className="space-y-5">
+            {menuSections.map((section, sectionIndex) => (
+              <div key={section.title || sectionIndex}>
+                {!isCollapsed && section.title && (
+                  <p className="mb-2 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    {section.title}
+                  </p>
+                )}
 
-              return (
-                <button
-                  key={item.name}
-                  onClick={() => item.path && navigate(item.path)}
-                  title={isCollapsed ? item.name : ""}
-                  className={`group flex w-full items-center rounded-2xl text-sm font-bold transition ${
-                    isCollapsed ? "justify-center px-0 py-3" : "gap-3 px-4 py-3"
-                  } ${
-                    isActive
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                  }`}
-                >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center text-base">
-                    {item.icon}
-                  </span>
+                <div className="space-y-2">
+                  {section.items.map((item) => {
+                    const isActive = isMenuActive(item.path)
 
-                  {!isCollapsed && (
-                    <span className="truncate text-left">{item.name}</span>
-                  )}
-                </button>
-              )
-            })}
+                    return (
+                      <button
+                        key={item.name}
+                        onClick={() => item.path && navigate(item.path)}
+                        title={isCollapsed ? item.name : ""}
+                        className={`group flex w-full items-center rounded-2xl text-sm font-bold transition ${
+                          isCollapsed
+                            ? "justify-center px-0 py-3"
+                            : "gap-3 px-4 py-3"
+                        } ${
+                          isActive
+                            ? "bg-blue-600 text-white shadow-sm"
+                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        }`}
+                      >
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center text-base">
+                          {item.icon}
+                        </span>
+
+                        {!isCollapsed && (
+                          <span className="truncate text-left">
+                            {item.name}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
         </div>
 

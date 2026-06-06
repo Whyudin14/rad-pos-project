@@ -1,116 +1,19 @@
 import { useEffect, useMemo, useState } from "react"
 import MainLayout from "../layouts/MainLayout"
 import { products as dummyProducts } from "../data/dummyProducts"
-import AddProductModal from "../components/stock-barang/AddProductModal"
-import EditProductModal from "../components/stock-barang/EditProductModal"
-import StockMutationHistoryModal from "../components/stock-barang/StockMutationHistoryModal"
-import ActiveStockOpnameSessionCard from "../components/stock-opname/ActiveStockOpnameSessionCard"
-import CreateStockOpnameSessionModal from "../components/stock-opname/CreateStockOpnameSessionModal"
-import StockOpnameCheckModal from "../components/stock-opname/StockOpnameCheckModal"
-import EditStockOpnameModal from "../components/stock-opname/EditStockOpnameModal"
-import OpnameHistoryModal from "../components/stock-opname/OpnameHistoryModal"
-import ActiveSessionResultModal from "../components/stock-opname/ActiveSessionResultModal"
-import SessionHistoryModal from "../components/stock-opname/SessionHistoryModal"
-import { getStockMutations } from "../utils/transactionStorage"
 
 function StokBarang() {
   const [searchTerm, setSearchTerm] = useState("")
   const [stockFilter, setStockFilter] = useState("Semua")
   const [productStatusFilter, setProductStatusFilter] = useState("Semua")
-  const [productViewMode, setProductViewMode] = useState("Semua")
+  const [viewMode, setViewMode] = useState("Ringkas")
   const [expandedProductId, setExpandedProductId] = useState(null)
+  const [expandedRowId, setExpandedRowId] = useState(null)
   const [productList, setProductList] = useState([])
-  const [showAddProduct, setShowAddProduct] = useState(false)
-  const [selectedEditProduct, setSelectedEditProduct] = useState(null)
-  const [successMessage, setSuccessMessage] = useState("")
-
-  const [selectedStockOpname, setSelectedStockOpname] = useState(null)
-  const [physicalStock, setPhysicalStock] = useState("")
-  const [opnameNote, setOpnameNote] = useState("")
-  const [showOpnameSuccess, setShowOpnameSuccess] = useState(false)
-  const [selectedEditOpname, setSelectedEditOpname] = useState(null)
-  const [editPhysicalStock, setEditPhysicalStock] = useState("")
-  const [editOpnameNote, setEditOpnameNote] = useState("")
-
-  const [showOpnameHistory, setShowOpnameHistory] = useState(false)
-  const [stockOpnameHistory, setStockOpnameHistory] = useState([])
-  const [opnameHistoryFilter, setOpnameHistoryFilter] = useState("Semua")
-  const [opnameHistorySessionFilter, setOpnameHistorySessionFilter] =
-    useState("Semua Sesi")
-  const [opnameHistorySearch, setOpnameHistorySearch] = useState("")
-
-  const [showStockMutationHistory, setShowStockMutationHistory] =
-    useState(false)
-  const [stockMutations, setStockMutations] = useState([])
-  const [mutationTypeFilter, setMutationTypeFilter] = useState("Semua")
-  const [mutationSearch, setMutationSearch] = useState("")
-
-  const [showCreateSession, setShowCreateSession] = useState(false)
-  const [stockOpnameSessions, setStockOpnameSessions] = useState([])
-  const [activeStockOpnameSession, setActiveStockOpnameSession] =
-    useState(null)
-  const [selectedSessionType, setSelectedSessionType] = useState("")
-  const [sessionNote, setSessionNote] = useState("")
-
-  const [showSessionHistory, setShowSessionHistory] = useState(false)
-  const [showActiveSessionResult, setShowActiveSessionResult] = useState(false)
-  const [sessionHistoryStatusFilter, setSessionHistoryStatusFilter] =
-    useState("Semua")
-  const [sessionHistoryTypeFilter, setSessionHistoryTypeFilter] =
-    useState("Semua Sesi")
-  const [sessionHistorySearch, setSessionHistorySearch] = useState("")
-  const [selectedSessionSummary, setSelectedSessionSummary] = useState(null)
-
-  const stockOpnameTypes = [
-    {
-      type: "Aksesoris",
-      scheduleDay: "Senin",
-      categories: ["Aksesoris", "Accessories"],
-    },
-    {
-      type: "Running & Lifestyle",
-      scheduleDay: "Selasa",
-      categories: [
-        "Running",
-        "Running Junior",
-        "Lifestyle",
-        "Lifestyle Junior",
-      ],
-    },
-    {
-      type: "Football",
-      scheduleDay: "Rabu",
-      categories: ["Football", "Football Junior"],
-    },
-    {
-      type: "Futsal",
-      scheduleDay: "Kamis",
-      categories: ["Futsal", "Futsal Junior"],
-    },
-  ]
 
   const stockFilters = ["Semua", "Aman", "Menipis", "Kosong"]
   const productStatusFilters = ["Semua", "Aktif", "Nonaktif"]
-  const opnameHistoryFilters = ["Semua", "Sesuai", "Lebih", "Kurang"]
-
-  const opnameHistorySessionFilters = [
-    "Semua Sesi",
-    "Aksesoris",
-    "Running & Lifestyle",
-    "Football",
-    "Futsal",
-    "Tanpa Sesi",
-  ]
-
-  const sessionHistoryStatusFilters = ["Semua", "Aktif", "Selesai"]
-
-  const sessionHistoryTypeFilters = [
-    "Semua Sesi",
-    "Aksesoris",
-    "Running & Lifestyle",
-    "Football",
-    "Futsal",
-  ]
+  const viewModes = ["Ringkas", "Per Varian"]
 
   useEffect(() => {
     const storedProducts = JSON.parse(
@@ -123,39 +26,10 @@ function StokBarang() {
       setProductList(dummyProducts)
       localStorage.setItem("radProducts", JSON.stringify(dummyProducts))
     }
-
-    const storedHistory = JSON.parse(
-      localStorage.getItem("stockOpnameHistory") || "[]"
-    )
-
-    const storedSessions = JSON.parse(
-      localStorage.getItem("stockOpnameSessions") || "[]"
-    )
-
-    const storedActiveSession = JSON.parse(
-      localStorage.getItem("activeStockOpnameSession") || "null"
-    )
-
-    setStockOpnameHistory(storedHistory)
-    setStockOpnameSessions(storedSessions)
-    setActiveStockOpnameSession(storedActiveSession)
-    setStockMutations(getStockMutations())
   }, [])
 
   const formatRupiah = (number) => {
     return `Rp ${Number(number || 0).toLocaleString("id-ID")}`
-  }
-
-  const formatDateTime = (date) => {
-    if (!date) return "-"
-
-    return new Date(date).toLocaleString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
   }
 
   const getTotalStock = (product) => {
@@ -223,101 +97,111 @@ function StokBarang() {
     }
   }
 
-  const getOpnameStatusClass = (status) => {
-    if (status === "Sesuai") {
-      return "bg-emerald-50 text-emerald-600 border-emerald-100"
-    }
+  const getProductStockSummary = (product) => {
+    const variants = product.variants || []
+    const safeVariants =
+      variants.length > 0
+        ? variants
+        : [
+            {
+              id: `${product.id}-default`,
+              value: "-",
+              sku: product.sku,
+              barcode: product.barcode,
+              stock: product.stock,
+              price: product.price,
+              minimumStock: product.minimumStock,
+            },
+          ]
 
-    if (status === "Lebih") {
-      return "bg-blue-50 text-blue-600 border-blue-100"
-    }
+    const statuses = safeVariants.map((variant) => {
+      const stock = Number(variant.stock || 0)
+      const minimumStock = getVariantMinimumStock(product, variant)
 
-    return "bg-red-50 text-red-600 border-red-100"
-  }
-
-  const getDifferenceClass = (difference) => {
-    const numericDifference = Number(difference || 0)
-
-    if (numericDifference === 0) return "text-emerald-600"
-    if (numericDifference > 0) return "text-blue-600"
-
-    return "text-red-600"
-  }
-
-  const formatDifference = (difference) => {
-    const numericDifference = Number(difference || 0)
-
-    if (numericDifference > 0) return `+${numericDifference}`
-
-    return numericDifference
-  }
-
-  const getSelectedSessionTypeData = () => {
-    return stockOpnameTypes.find((item) => item.type === selectedSessionType)
-  }
-
-  const isProductMatchActiveSession = (product) => {
-    if (!activeStockOpnameSession) return false
-
-    return activeStockOpnameSession.categories?.includes(product.category)
-  }
-
-  const isHistoryWithoutSession = (item) => {
-    return (
-      !item.sessionId ||
-      item.sessionId === "null" ||
-      item.sessionId === "undefined" ||
-      !item.sessionName ||
-      item.sessionName === "Tanpa Sesi" ||
-      item.sessionName === "Tanpa sesi aktif" ||
-      !item.sessionType ||
-      item.sessionType === "-" ||
-      item.sessionType === "Tanpa Sesi"
-    )
-  }
-
-  const getSessionStatus = (session) => {
-    if (activeStockOpnameSession?.id === session.id) return "Aktif"
-    if (session.status === "Draft") return "Aktif"
-    return session.status || "Aktif"
-  }
-
-  const getSessionSummary = (session) => {
-    const sessionItems = stockOpnameHistory.filter((item) => {
-      return item.sessionId === session.id
+      return getStockStatus(stock, minimumStock).label
     })
 
-    return buildSessionSummary(session, sessionItems, getSessionStatus(session))
+    const totalStock = getTotalStock(product)
+    const minimumStock = getMinimumStock(product)
+
+    if (statuses.includes("Kosong")) {
+      return getStockStatus(0, minimumStock)
+    }
+
+    if (statuses.includes("Menipis")) {
+      return {
+        label: "Menipis",
+        badgeClass: "bg-amber-50 text-amber-600 border-amber-100",
+        textClass: "text-amber-600",
+      }
+    }
+
+    return getStockStatus(totalStock, minimumStock)
   }
 
+  const stockRows = useMemo(() => {
+    return productList.flatMap((product) => {
+      const variants =
+        product.variants && product.variants.length > 0
+          ? product.variants
+          : [
+              {
+                id: `${product.id}-default`,
+                value: "-",
+                sku: product.sku,
+                barcode: product.barcode,
+                stock: product.stock,
+                price: product.price,
+                minimumStock: product.minimumStock,
+              },
+            ]
+
+      return variants.map((variant) => {
+        const stock = Number(variant.stock || 0)
+        const minimumStock = getVariantMinimumStock(product, variant)
+        const stockStatus = getStockStatus(stock, minimumStock)
+        const productStatus = getProductStatusData(product)
+
+        return {
+          id: `${product.id}-${variant.id || variant.value || variant.sku}`,
+          productId: product.id,
+          productName: product.name,
+          brand: product.brand,
+          category: product.category,
+          rackLocation: product.rackLocation,
+          productSku: product.sku,
+          productBarcode: product.barcode,
+          productDescription: product.description,
+          variantType: product.variantType,
+          variantValue: variant.value,
+          sku: variant.sku || product.sku,
+          barcode: variant.barcode || product.barcode,
+          price: variant.price || product.price,
+          stock,
+          minimumStock,
+          stockStatus,
+          productStatus,
+          isActive: isProductActive(product),
+        }
+      })
+    })
+  }, [productList])
+
   const totalProducts = productList.length
+  const totalVariants = stockRows.length
 
-  const totalVariants = productList.reduce((total, product) => {
-    return total + Number(product.variants?.length || 0)
+  const totalStock = stockRows.reduce((total, row) => {
+    return total + Number(row.stock || 0)
   }, 0)
 
-  const totalStock = productList.reduce((total, product) => {
-    return total + getTotalStock(product)
-  }, 0)
-
-  const totalNeedCheck = productList.filter((product) => {
-    const stock = getTotalStock(product)
-    const minimumStock = getMinimumStock(product)
-    const status = getStockStatus(stock, minimumStock)
-
-    return status.label === "Menipis" || status.label === "Kosong"
+  const totalNeedCheck = stockRows.filter((row) => {
+    return row.stockStatus.label === "Menipis" || row.stockStatus.label === "Kosong"
   }).length
-
-  const sessionProductsCount = activeStockOpnameSession
-    ? productList.filter((product) => isProductMatchActiveSession(product)).length
-    : 0
 
   const filteredProducts = productList.filter((product) => {
     const keyword = searchTerm.toLowerCase()
-    const productStock = getTotalStock(product)
-    const minimumStock = getMinimumStock(product)
-    const stockStatus = getStockStatus(productStock, minimumStock)
     const productActive = isProductActive(product)
+    const productStockStatus = getProductStockSummary(product)
 
     const matchProduct =
       product.name?.toLowerCase().includes(keyword) ||
@@ -336,203 +220,42 @@ function StokBarang() {
       )
     })
 
-    const matchFilter =
-      stockFilter === "Semua" || stockStatus.label === stockFilter
+    const matchStockFilter =
+      stockFilter === "Semua" || productStockStatus.label === stockFilter
 
     const matchProductStatus =
       productStatusFilter === "Semua" ||
       (productStatusFilter === "Aktif" && productActive) ||
       (productStatusFilter === "Nonaktif" && !productActive)
 
-    const matchSessionMode =
-      productViewMode === "Semua" || isProductMatchActiveSession(product)
-
     return (
-      (matchProduct || matchVariant) &&
-      matchFilter &&
-      matchProductStatus &&
-      matchSessionMode
+      (matchProduct || matchVariant) && matchStockFilter && matchProductStatus
     )
   })
 
-  const stockOpnameSessionSummaries = useMemo(() => {
-    return stockOpnameSessions.map((session) => getSessionSummary(session))
-  }, [stockOpnameSessions, stockOpnameHistory, activeStockOpnameSession])
-
-  const filteredStockOpnameSessionSummaries =
-    stockOpnameSessionSummaries.filter((session) => {
-      const keyword = sessionHistorySearch.toLowerCase()
-
-      const matchStatus =
-        sessionHistoryStatusFilter === "Semua" ||
-        session.status === sessionHistoryStatusFilter
-
-      const matchType =
-        sessionHistoryTypeFilter === "Semua Sesi" ||
-        session.type === sessionHistoryTypeFilter
-
-      const matchSearch =
-        session.name?.toLowerCase().includes(keyword) ||
-        session.type?.toLowerCase().includes(keyword) ||
-        session.scheduleDay?.toLowerCase().includes(keyword) ||
-        session.status?.toLowerCase().includes(keyword) ||
-        session.note?.toLowerCase().includes(keyword) ||
-        session.categories?.join(" ").toLowerCase().includes(keyword)
-
-      return matchStatus && matchType && matchSearch
-    })
-
-  const filteredStockOpnameHistory = stockOpnameHistory.filter((item) => {
-    const keyword = opnameHistorySearch.toLowerCase()
-
-    const matchStatus =
-      opnameHistoryFilter === "Semua" || item.status === opnameHistoryFilter
-
-    const matchSession =
-      opnameHistorySessionFilter === "Semua Sesi" ||
-      item.sessionType === opnameHistorySessionFilter ||
-      (opnameHistorySessionFilter === "Tanpa Sesi" &&
-        isHistoryWithoutSession(item))
+  const filteredStockRows = stockRows.filter((row) => {
+    const keyword = searchTerm.toLowerCase()
 
     const matchSearch =
-      item.productName?.toLowerCase().includes(keyword) ||
-      item.brand?.toLowerCase().includes(keyword) ||
-      item.category?.toLowerCase().includes(keyword) ||
-      item.variantValue?.toString().toLowerCase().includes(keyword) ||
-      item.sku?.toLowerCase().includes(keyword) ||
-      item.barcode?.toString().includes(opnameHistorySearch) ||
-      item.rackLocation?.toLowerCase().includes(keyword) ||
-      item.note?.toLowerCase().includes(keyword) ||
-      item.status?.toLowerCase().includes(keyword) ||
-      item.sessionName?.toLowerCase().includes(keyword) ||
-      item.sessionType?.toLowerCase().includes(keyword) ||
-      item.sessionScheduleDay?.toLowerCase().includes(keyword)
+      row.productName?.toLowerCase().includes(keyword) ||
+      row.brand?.toLowerCase().includes(keyword) ||
+      row.category?.toLowerCase().includes(keyword) ||
+      row.variantValue?.toString().toLowerCase().includes(keyword) ||
+      row.sku?.toLowerCase().includes(keyword) ||
+      row.barcode?.toString().includes(searchTerm) ||
+      row.rackLocation?.toLowerCase().includes(keyword) ||
+      row.productDescription?.toLowerCase().includes(keyword)
 
-    return matchStatus && matchSession && matchSearch
+    const matchStockFilter =
+      stockFilter === "Semua" || row.stockStatus.label === stockFilter
+
+    const matchProductStatus =
+      productStatusFilter === "Semua" ||
+      (productStatusFilter === "Aktif" && row.isActive) ||
+      (productStatusFilter === "Nonaktif" && !row.isActive)
+
+    return matchSearch && matchStockFilter && matchProductStatus
   })
-
-  const filteredStockMutations = stockMutations.filter((item) => {
-    const keyword = mutationSearch.toLowerCase()
-
-    const matchType =
-      mutationTypeFilter === "Semua" || item.type === mutationTypeFilter
-
-    const matchSearch =
-      item.productName?.toLowerCase().includes(keyword) ||
-      item.brand?.toLowerCase().includes(keyword) ||
-      item.variantValue?.toString().toLowerCase().includes(keyword) ||
-      item.sku?.toLowerCase().includes(keyword) ||
-      item.invoiceNumber?.toLowerCase().includes(keyword) ||
-      item.reference?.toLowerCase().includes(keyword) ||
-      item.source?.toLowerCase().includes(keyword) ||
-      item.note?.toLowerCase().includes(keyword)
-
-    return matchType && matchSearch
-  })
-
-  const totalOpnameHistory = stockOpnameHistory.length
-  const totalOpnameSesuai = countByStatus(stockOpnameHistory, "Sesuai")
-  const totalOpnameLebih = countByStatus(stockOpnameHistory, "Lebih")
-  const totalOpnameKurang = countByStatus(stockOpnameHistory, "Kurang")
-
-  const totalOpnameSessions = stockOpnameSessionSummaries.length
-  const totalActiveSessions = stockOpnameSessionSummaries.filter((session) => {
-    return session.status === "Aktif"
-  }).length
-  const totalFinishedSessions = stockOpnameSessionSummaries.filter((session) => {
-    return session.status === "Selesai"
-  }).length
-  const totalCheckedFromSessions = stockOpnameSessionSummaries.reduce(
-    (total, session) => total + session.totalChecked,
-    0
-  )
-
-  const activeSessionSummary = activeStockOpnameSession
-    ? getSessionSummary(activeStockOpnameSession)
-    : null
-
-  const activeSessionProgress = activeStockOpnameSession
-    ? getSessionProgressData(
-        activeStockOpnameSession,
-        stockOpnameHistory,
-        productList
-      )
-    : getEmptySessionProgress()
-
-  const selectedSystemStock = Number(selectedStockOpname?.systemStock || 0)
-  const selectedPhysicalStock = Number(physicalStock || 0)
-  const selectedDifference =
-    physicalStock === "" ? 0 : selectedPhysicalStock - selectedSystemStock
-
-  const showSuccessNotification = (message) => {
-    setSuccessMessage(message)
-
-    setTimeout(() => {
-      setSuccessMessage("")
-    }, 2500)
-  }
-
-  const createStockOpnameSession = () => {
-    const selectedTypeData = getSelectedSessionTypeData()
-
-    if (!selectedTypeData) return
-
-    const newSession = {
-      id: `SESSION-SO-${Date.now()}`,
-      name: `SO ${selectedTypeData.type} - ${formatDateTime(
-        new Date().toISOString()
-      )}`,
-      type: selectedTypeData.type,
-      scheduleDay: selectedTypeData.scheduleDay,
-      categories: selectedTypeData.categories,
-      note: sessionNote,
-      status: "Aktif",
-      createdAt: new Date().toISOString(),
-      finishedAt: null,
-    }
-
-    const updatedSessions = [newSession, ...stockOpnameSessions]
-
-    localStorage.setItem("stockOpnameSessions", JSON.stringify(updatedSessions))
-    localStorage.setItem(
-      "activeStockOpnameSession",
-      JSON.stringify(newSession)
-    )
-
-    setStockOpnameSessions(updatedSessions)
-    setActiveStockOpnameSession(newSession)
-    setProductViewMode("Sesuai Sesi")
-    setSelectedSessionType("")
-    setSessionNote("")
-    setShowCreateSession(false)
-  }
-
-  const closeActiveStockOpnameSession = () => {
-    if (!activeStockOpnameSession) return
-
-    const confirmClose = window.confirm(
-      "Akhiri sesi SO aktif ini? Sesi tetap tersimpan sebagai riwayat sesi."
-    )
-
-    if (!confirmClose) return
-
-    const finishedSession = {
-      ...activeStockOpnameSession,
-      status: "Selesai",
-      finishedAt: new Date().toISOString(),
-    }
-
-    const updatedSessions = stockOpnameSessions.map((session) => {
-      return session.id === finishedSession.id ? finishedSession : session
-    })
-
-    localStorage.setItem("stockOpnameSessions", JSON.stringify(updatedSessions))
-    localStorage.removeItem("activeStockOpnameSession")
-
-    setStockOpnameSessions(updatedSessions)
-    setActiveStockOpnameSession(null)
-    setProductViewMode("Semua")
-  }
 
   const toggleExpandProduct = (productId) => {
     setExpandedProductId((currentId) =>
@@ -540,267 +263,26 @@ function StokBarang() {
     )
   }
 
-  const openStockOpnameModal = (product, variant) => {
-    setSelectedStockOpname({
-      productId: product.id,
-      productName: product.name,
-      brand: product.brand,
-      category: product.category,
-      rackLocation: product.rackLocation,
-      variantId: variant.id,
-      variantValue: variant.value,
-      sku: variant.sku,
-      barcode: variant.barcode,
-      systemStock: Number(variant.stock || 0),
-    })
-
-    setPhysicalStock("")
-    setOpnameNote("")
-    setShowOpnameSuccess(false)
+  const toggleExpandRow = (rowId) => {
+    setExpandedRowId((currentId) => (currentId === rowId ? null : rowId))
   }
 
-  const closeStockOpnameModal = () => {
-    setSelectedStockOpname(null)
-    setPhysicalStock("")
-    setOpnameNote("")
-    setShowOpnameSuccess(false)
+  const handleChangeViewMode = (mode) => {
+    setViewMode(mode)
+    setExpandedProductId(null)
+    setExpandedRowId(null)
   }
 
-  const openEditStockOpnameModal = (item) => {
-    setSelectedEditOpname(item)
-    setEditPhysicalStock(String(item.physicalStock ?? ""))
-    setEditOpnameNote(item.note || "")
-  }
-
-  const closeEditStockOpnameModal = () => {
-    setSelectedEditOpname(null)
-    setEditPhysicalStock("")
-    setEditOpnameNote("")
-  }
-
-  const openStockMutationHistoryModal = () => {
-    setStockMutations(getStockMutations())
-    setShowStockMutationHistory(true)
-  }
-
-  const saveEditStockOpname = () => {
-    if (!selectedEditOpname) return
-
-    const numericPhysicalStock = Number(editPhysicalStock)
-
-    if (editPhysicalStock === "" || Number.isNaN(numericPhysicalStock)) return
-
-    const systemStock = Number(selectedEditOpname.systemStock || 0)
-    const difference = numericPhysicalStock - systemStock
-
-    const updatedHistory = stockOpnameHistory.map((item) => {
-      if (item.id !== selectedEditOpname.id) return item
-
-      return {
-        ...item,
-        physicalStock: numericPhysicalStock,
-        difference,
-        note: editOpnameNote,
-        status:
-          difference === 0 ? "Sesuai" : difference > 0 ? "Lebih" : "Kurang",
-        updatedAt: new Date().toISOString(),
-      }
-    })
-
-    localStorage.setItem("stockOpnameHistory", JSON.stringify(updatedHistory))
-    setStockOpnameHistory(updatedHistory)
-
-    if (selectedSessionSummary) {
-      const updatedSelectedItems = updatedHistory.filter((item) => {
-        return item.sessionId === selectedSessionSummary.id
-      })
-
-      setSelectedSessionSummary(
-        buildSessionSummary(
-          selectedSessionSummary,
-          updatedSelectedItems,
-          selectedSessionSummary.status
-        )
-      )
-    }
-
-    closeEditStockOpnameModal()
-  }
-
-  const saveStockOpname = () => {
-    if (!selectedStockOpname) return
-
-    const numericPhysicalStock = Number(physicalStock)
-
-    if (physicalStock === "" || Number.isNaN(numericPhysicalStock)) return
-
-    const difference =
-      numericPhysicalStock - Number(selectedStockOpname.systemStock || 0)
-
-    const opnameData = {
-      id: `SO-${Date.now()}`,
-      date: new Date().toISOString(),
-      sessionId: activeStockOpnameSession?.id || null,
-      sessionName: activeStockOpnameSession?.name || "Tanpa Sesi",
-      sessionType: activeStockOpnameSession?.type || "-",
-      sessionScheduleDay: activeStockOpnameSession?.scheduleDay || "-",
-      productId: selectedStockOpname.productId,
-      productName: selectedStockOpname.productName,
-      brand: selectedStockOpname.brand,
-      category: selectedStockOpname.category,
-      rackLocation: selectedStockOpname.rackLocation,
-      variantId: selectedStockOpname.variantId,
-      variantValue: selectedStockOpname.variantValue,
-      sku: selectedStockOpname.sku,
-      barcode: selectedStockOpname.barcode,
-      systemStock: Number(selectedStockOpname.systemStock || 0),
-      physicalStock: numericPhysicalStock,
-      difference,
-      note: opnameNote,
-      status:
-        difference === 0 ? "Sesuai" : difference > 0 ? "Lebih" : "Kurang",
-    }
-
-    const existingHistory = JSON.parse(
-      localStorage.getItem("stockOpnameHistory") || "[]"
-    )
-
-    const updatedHistory = [opnameData, ...existingHistory]
-
-    localStorage.setItem("stockOpnameHistory", JSON.stringify(updatedHistory))
-    setStockOpnameHistory(updatedHistory)
-    setShowOpnameSuccess(true)
-
-    setTimeout(() => {
-      closeStockOpnameModal()
-    }, 900)
-  }
-
-  const deleteStockOpnameHistory = (historyId) => {
-    const confirmDelete = window.confirm(
-      "Hapus riwayat stok opname ini? Data yang sudah dihapus tidak bisa dikembalikan."
-    )
-
-    if (!confirmDelete) return
-
-    const updatedHistory = stockOpnameHistory.filter((item) => {
-      return item.id !== historyId
-    })
-
-    localStorage.setItem("stockOpnameHistory", JSON.stringify(updatedHistory))
-    setStockOpnameHistory(updatedHistory)
-
-    if (selectedSessionSummary) {
-      const updatedSelectedItems = selectedSessionSummary.items.filter((item) => {
-        return item.id !== historyId
-      })
-
-      setSelectedSessionSummary(
-        buildSessionSummary(
-          selectedSessionSummary,
-          updatedSelectedItems,
-          selectedSessionSummary.status
-        )
-      )
-    }
-  }
-
-  const closeSessionHistoryModal = () => {
-    setShowSessionHistory(false)
-    setSelectedSessionSummary(null)
-  }
-
-  const saveNewProduct = (newProduct) => {
-    const productWithStatus = {
-      ...newProduct,
-      isActive: newProduct.isActive ?? true,
-    }
-
-    const updatedProducts = [productWithStatus, ...productList]
-
-    localStorage.setItem("radProducts", JSON.stringify(updatedProducts))
-    setProductList(updatedProducts)
-    setShowAddProduct(false)
-    setExpandedProductId(productWithStatus.id)
-    showSuccessNotification("Produk baru berhasil ditambahkan.")
-  }
-
-  const toggleProductActive = (product) => {
-    const currentlyActive = isProductActive(product)
-
-    if (currentlyActive) {
-      const confirmInactive = window.confirm(
-        `Nonaktifkan produk "${product.name}"?
-
-Produk tidak akan muncul di POS Kasir, tapi data produk dan riwayat transaksi lama tetap aman.`
-      )
-
-      if (!confirmInactive) return
-    }
-
-    const updatedProducts = productList.map((item) => {
-      if (item.id !== product.id) return item
-
-      return {
-        ...item,
-        isActive: !currentlyActive,
-        updatedAt: new Date().toISOString(),
-      }
-    })
-
-    localStorage.setItem("radProducts", JSON.stringify(updatedProducts))
-    setProductList(updatedProducts)
-
-    showSuccessNotification(
-      currentlyActive
-        ? "Produk berhasil dinonaktifkan."
-        : "Produk berhasil diaktifkan kembali."
-    )
-  }
-
-  const saveEditedProduct = (updatedProduct) => {
-    const updatedProducts = productList.map((product) => {
-      if (product.id !== updatedProduct.id) return product
-
-      return {
-        ...product,
-        ...updatedProduct,
-        isActive: updatedProduct.isActive ?? product.isActive ?? true,
-        updatedAt: new Date().toISOString(),
-      }
-    })
-
-    localStorage.setItem("radProducts", JSON.stringify(updatedProducts))
-    setProductList(updatedProducts)
-    setSelectedEditProduct(null)
-    setExpandedProductId(updatedProduct.id)
-    showSuccessNotification("Perubahan produk berhasil disimpan.")
-  }
+  const displayedCount =
+    viewMode === "Ringkas" ? filteredProducts.length : filteredStockRows.length
 
   return (
     <MainLayout>
       <div className="min-h-screen">
-        {successMessage && (
-          <div className="fixed right-4 top-4 z-[80] w-[calc(100%-2rem)] max-w-sm rounded-3xl border border-emerald-100 bg-white p-4 shadow-2xl">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-lg">
-                ✅
-              </div>
-
-              <div>
-                <p className="text-sm font-black text-slate-900">Berhasil</p>
-                <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-500">
-                  {successMessage}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="mb-1 text-sm font-black uppercase tracking-wide text-blue-600">
-              Manajemen Barang
+              Manajemen Stok
             </p>
 
             <h1 className="text-3xl font-black text-slate-900">
@@ -808,85 +290,32 @@ Produk tidak akan muncul di POS Kasir, tapi data produk dan riwayat transaksi la
             </h1>
 
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              Cek stok produk, ukuran, SKU, barcode, dan lokasi rak dengan cepat.
+              Cek stok produk, ukuran, SKU, barcode, dan lokasi rak secara
+              cepat.
             </p>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-            <button
-              onClick={() => setShowAddProduct(true)}
-              className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700"
-            >
-              + Tambah Produk
-            </button>
           </div>
         </div>
 
         <div className="mb-5 grid gap-3 md:grid-cols-4">
           <SummaryCard label="Produk" value={totalProducts} color="slate" />
-          <SummaryCard label="Varian" value={totalVariants} color="blue" />
+          <SummaryCard label="Varian/SKU" value={totalVariants} color="blue" />
           <SummaryCard label="Total Stok" value={totalStock} color="emerald" />
           <SummaryCard label="Perlu Dicek" value={totalNeedCheck} color="amber" />
-        </div>
-
-        <ActiveStockOpnameSessionCard
-          activeStockOpnameSession={activeStockOpnameSession}
-          activeSessionProgress={activeSessionProgress}
-          onCreateSession={() => setShowCreateSession(true)}
-          onCloseActiveSession={closeActiveStockOpnameSession}
-          onOpenActiveSessionResult={() => setShowActiveSessionResult(true)}
-          onOpenSessionHistory={() => setShowSessionHistory(true)}
-        />
-
-        <div className="mb-5 grid gap-3 xl:grid-cols-2">
-          <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-black text-slate-900">
-                Detail Item Stock Opname
-              </p>
-              <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-400">
-                Lihat riwayat pengecekan stok per item, termasuk status sesuai,
-                lebih, atau kurang.
-              </p>
-            </div>
-
-            <button
-              onClick={() => setShowOpnameHistory(true)}
-              className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-200"
-            >
-              Buka Detail Item SO
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-3 rounded-3xl border border-emerald-100 bg-emerald-50 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-black text-emerald-900">
-                Riwayat Mutasi Stok
-              </p>
-              <p className="mt-1 text-xs font-semibold leading-relaxed text-emerald-700">
-                Cek jejak stok dari penjualan dan void transaksi agar perubahan
-                stok lebih mudah ditelusuri.
-              </p>
-            </div>
-
-            <button
-              onClick={openStockMutationHistoryModal}
-              className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700"
-            >
-              Buka Mutasi Stok
-            </button>
-          </div>
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 grid gap-4 xl:grid-cols-[1fr_520px] xl:items-start">
             <div>
               <h2 className="text-xl font-black text-slate-900">
-                Data Barang
+                {viewMode === "Ringkas"
+                  ? "Ringkasan Stok Barang"
+                  : "Daftar Stok Per Varian"}
               </h2>
 
               <p className="mt-1 text-sm font-semibold text-slate-400">
-                Cari barang, lihat stok per ukuran, dan lakukan SO dari detail produk.
+                {viewMode === "Ringkas"
+                  ? "Tampilan ringkas per artikel produk. Klik detail untuk melihat stok ukuran."
+                  : "Tampilan detail per ukuran/SKU untuk cek barcode, ukuran, dan stok spesifik."}
               </p>
             </div>
 
@@ -894,13 +323,13 @@ Produk tidak akan muncul di POS Kasir, tapi data produk dan riwayat transaksi la
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Cari nama barang, SKU, barcode, ukuran, rak..."
+              placeholder="Cari barang, ukuran, SKU, barcode, rak..."
               className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
             />
           </div>
 
           <div className="mb-4 rounded-3xl border border-slate-100 bg-slate-50 p-3">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
               <div className="flex flex-wrap gap-2">
                 {stockFilters.map((filter) => {
                   const isActive = stockFilter === filter
@@ -921,10 +350,30 @@ Produk tidak akan muncul di POS Kasir, tapi data produk dan riwayat transaksi la
                 })}
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between xl:justify-end">
+              <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-end">
+                <div className="flex rounded-2xl bg-white p-1">
+                  {viewModes.map((mode) => {
+                    const isActive = viewMode === mode
+
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => handleChangeViewMode(mode)}
+                        className={`rounded-xl px-4 py-2 text-xs font-black transition ${
+                          isActive
+                            ? "bg-blue-600 text-white shadow-sm"
+                            : "text-slate-500 hover:bg-slate-100"
+                        }`}
+                      >
+                        {mode}
+                      </button>
+                    )
+                  })}
+                </div>
+
                 <div className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2">
                   <span className="text-xs font-black uppercase tracking-wide text-slate-400">
-                    Status
+                    Status Produk
                   </span>
 
                   <select
@@ -940,357 +389,178 @@ Produk tidak akan muncul di POS Kasir, tapi data produk dan riwayat transaksi la
                   </select>
                 </div>
 
-                <div className="flex rounded-2xl bg-white p-1">
-                  <button
-                    onClick={() => setProductViewMode("Semua")}
-                    className={`rounded-xl px-3 py-2 text-xs font-black transition ${
-                      productViewMode === "Semua"
-                        ? "bg-blue-600 text-white shadow-sm"
-                        : "text-slate-500 hover:bg-slate-100"
-                    }`}
-                  >
-                    Semua Produk
-                  </button>
-
-                  {activeStockOpnameSession && (
-                    <button
-                      onClick={() => setProductViewMode("Sesuai Sesi")}
-                      className={`rounded-xl px-3 py-2 text-xs font-black transition ${
-                        productViewMode === "Sesuai Sesi"
-                          ? "bg-emerald-600 text-white shadow-sm"
-                          : "text-emerald-600 hover:bg-emerald-50"
-                      }`}
-                    >
-                      Sesuai Sesi
-                    </button>
-                  )}
-                </div>
+                <p className="rounded-2xl bg-white px-4 py-2 text-xs font-black text-slate-400">
+                  {displayedCount}{" "}
+                  {viewMode === "Ringkas" ? "produk" : "varian"} ditampilkan
+                </p>
               </div>
             </div>
-
-            {productViewMode === "Sesuai Sesi" && activeStockOpnameSession && (
-              <div className="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-bold leading-relaxed text-emerald-700">
-                Menampilkan {sessionProductsCount} produk kategori{" "}
-                {activeStockOpnameSession.categories?.join(", ")} untuk sesi{" "}
-                {activeStockOpnameSession.type}.
-              </div>
-            )}
           </div>
 
-          {filteredProducts.length === 0 ? (
-            <EmptyState text="Produk tidak ditemukan" />
+          {viewMode === "Ringkas" ? (
+            <CompactProductStockTable
+              products={filteredProducts}
+              expandedProductId={expandedProductId}
+              toggleExpandProduct={toggleExpandProduct}
+              formatRupiah={formatRupiah}
+              getTotalStock={getTotalStock}
+              getMinimumStock={getMinimumStock}
+              getVariantMinimumStock={getVariantMinimumStock}
+              getStockStatus={getStockStatus}
+              getProductStockSummary={getProductStockSummary}
+              getProductStatusData={getProductStatusData}
+              isProductActive={isProductActive}
+            />
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-slate-200">
-              <div className="hidden grid-cols-[1.5fr_0.8fr_0.7fr_0.7fr_0.7fr_auto] gap-4 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400 xl:grid">
-                <span>Barang</span>
-                <span>Kategori</span>
-                <span>Harga</span>
-                <span>Varian</span>
-                <span>Stok</span>
-                <span>Aksi</span>
-              </div>
-
-              <div className="divide-y divide-slate-100">
-                {filteredProducts.map((product) => {
-                  const isExpanded = expandedProductId === product.id
-                  const productStock = getTotalStock(product)
-                  const minimumStock = getMinimumStock(product)
-                  const stockStatus = getStockStatus(
-                    productStock,
-                    minimumStock
-                  )
-                  const productStatus = getProductStatusData(product)
-                  const productActive = isProductActive(product)
-
-                  return (
-                    <div
-                      key={product.id}
-                      className={productActive ? "bg-white" : "bg-slate-50"}
-                    >
-                      <div className="grid gap-4 px-4 py-4 xl:grid-cols-[1.5fr_0.8fr_0.7fr_0.7fr_0.7fr_auto] xl:items-center">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="truncate text-base font-black text-slate-900">
-                              {product.name}
-                            </h3>
-
-                            <span
-                              className={`rounded-full border px-2.5 py-1 text-xs font-black ${stockStatus.badgeClass}`}
-                            >
-                              {stockStatus.label}
-                            </span>
-
-                            <span
-                              className={`rounded-full border px-2.5 py-1 text-xs font-black ${productStatus.badgeClass}`}
-                            >
-                              {productStatus.label}
-                            </span>
-                          </div>
-
-                          <p className="mt-1 text-sm font-semibold text-slate-500">
-                            {product.brand || "-"}
-                          </p>
-
-                          <p className="mt-1 text-xs font-bold text-slate-400">
-                            SKU: {product.sku || "-"}
-                          </p>
-
-                          <p className="mt-0.5 text-xs font-bold text-slate-400">
-                            Barcode: {product.barcode || "-"}
-                          </p>
-
-                          <p className="mt-0.5 text-xs font-bold text-slate-400">
-                            Rak: {product.rackLocation || "-"}
-                          </p>
-                        </div>
-
-                        <TableInfo
-                          label="Kategori"
-                          value={product.category || "-"}
-                        />
-
-                        <TableInfo
-                          label="Harga"
-                          value={formatRupiah(product.price)}
-                          strong
-                        />
-
-                        <TableInfo
-                          label="Varian"
-                          value={`${product.variants?.length || 0} ${
-                            product.variantType || ""
-                          }`}
-                        />
-
-                        <div>
-                          <p className="text-xs font-bold text-slate-400 xl:hidden">
-                            Total Stok
-                          </p>
-                          <p
-                            className={`text-lg font-black ${stockStatus.textClass}`}
-                          >
-                            {productStock}
-                          </p>
-
-                          <p className="text-xs font-bold text-slate-400">
-                            Min: {minimumStock || "-"}
-                          </p>
-                        </div>
-
-                        <button
-                          onClick={() => toggleExpandProduct(product.id)}
-                          className={`w-full rounded-2xl px-4 py-2.5 text-sm font-black transition xl:w-auto ${
-                            isExpanded
-                              ? "bg-slate-900 text-white"
-                              : "bg-blue-600 text-white hover:bg-blue-700"
-                          }`}
-                        >
-                          {isExpanded ? "Tutup" : "Detail"}
-                        </button>
-                      </div>
-
-                      {isExpanded && (
-                        <ProductDetail
-                          product={product}
-                          productStock={productStock}
-                          minimumStock={minimumStock}
-                          stockStatus={stockStatus}
-                          formatRupiah={formatRupiah}
-                          getVariantMinimumStock={getVariantMinimumStock}
-                          getStockStatus={getStockStatus}
-                          openStockOpnameModal={openStockOpnameModal}
-                          onEditProduct={setSelectedEditProduct}
-                          onToggleProductActive={toggleProductActive}
-                        />
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
+            <VariantStockTable
+              rows={filteredStockRows}
+              expandedRowId={expandedRowId}
+              toggleExpandRow={toggleExpandRow}
+              formatRupiah={formatRupiah}
+            />
           )}
         </div>
-
-        {showCreateSession && (
-          <CreateStockOpnameSessionModal
-            stockOpnameTypes={stockOpnameTypes}
-            selectedSessionType={selectedSessionType}
-            setSelectedSessionType={setSelectedSessionType}
-            sessionNote={sessionNote}
-            setSessionNote={setSessionNote}
-            onClose={() => setShowCreateSession(false)}
-            onSubmit={createStockOpnameSession}
-          />
-        )}
-
-        {selectedStockOpname && (
-          <StockOpnameCheckModal
-            selectedStockOpname={selectedStockOpname}
-            physicalStock={physicalStock}
-            setPhysicalStock={setPhysicalStock}
-            opnameNote={opnameNote}
-            setOpnameNote={setOpnameNote}
-            activeStockOpnameSession={activeStockOpnameSession}
-            selectedSystemStock={selectedSystemStock}
-            selectedDifference={selectedDifference}
-            showOpnameSuccess={showOpnameSuccess}
-            onClose={closeStockOpnameModal}
-            onSubmit={saveStockOpname}
-          />
-        )}
-
-        {showOpnameHistory && (
-          <OpnameHistoryModal
-            stockOpnameHistory={stockOpnameHistory}
-            filteredStockOpnameHistory={filteredStockOpnameHistory}
-            opnameHistoryFilters={opnameHistoryFilters}
-            opnameHistoryFilter={opnameHistoryFilter}
-            setOpnameHistoryFilter={setOpnameHistoryFilter}
-            opnameHistorySessionFilters={opnameHistorySessionFilters}
-            opnameHistorySessionFilter={opnameHistorySessionFilter}
-            setOpnameHistorySessionFilter={setOpnameHistorySessionFilter}
-            opnameHistorySearch={opnameHistorySearch}
-            setOpnameHistorySearch={setOpnameHistorySearch}
-            totalOpnameHistory={totalOpnameHistory}
-            totalOpnameSesuai={totalOpnameSesuai}
-            totalOpnameLebih={totalOpnameLebih}
-            totalOpnameKurang={totalOpnameKurang}
-            formatDateTime={formatDateTime}
-            getOpnameStatusClass={getOpnameStatusClass}
-            getDifferenceClass={getDifferenceClass}
-            formatDifference={formatDifference}
-            deleteStockOpnameHistory={deleteStockOpnameHistory}
-            openEditStockOpnameModal={openEditStockOpnameModal}
-            onClose={() => setShowOpnameHistory(false)}
-          />
-        )}
-
-        {showStockMutationHistory && (
-          <StockMutationHistoryModal
-            stockMutations={stockMutations}
-            filteredStockMutations={filteredStockMutations}
-            mutationTypeFilter={mutationTypeFilter}
-            setMutationTypeFilter={setMutationTypeFilter}
-            mutationSearch={mutationSearch}
-            setMutationSearch={setMutationSearch}
-            formatDateTime={formatDateTime}
-            formatDifference={formatDifference}
-            onClose={() => setShowStockMutationHistory(false)}
-          />
-        )}
-
-        {showActiveSessionResult && (
-          <ActiveSessionResultModal
-            activeSessionSummary={activeSessionSummary}
-            activeStockOpnameSession={activeStockOpnameSession}
-            activeSessionProgress={activeSessionProgress}
-            formatDateTime={formatDateTime}
-            getOpnameStatusClass={getOpnameStatusClass}
-            getDifferenceClass={getDifferenceClass}
-            formatDifference={formatDifference}
-            deleteStockOpnameHistory={deleteStockOpnameHistory}
-            openEditStockOpnameModal={openEditStockOpnameModal}
-            openStockOpnameModal={openStockOpnameModal}
-            onClose={() => setShowActiveSessionResult(false)}
-          />
-        )}
-
-        {showSessionHistory && (
-          <SessionHistoryModal
-            stockOpnameSessionSummaries={stockOpnameSessionSummaries}
-            filteredStockOpnameSessionSummaries={
-              filteredStockOpnameSessionSummaries
-            }
-            sessionHistoryStatusFilters={sessionHistoryStatusFilters}
-            sessionHistoryStatusFilter={sessionHistoryStatusFilter}
-            setSessionHistoryStatusFilter={setSessionHistoryStatusFilter}
-            sessionHistoryTypeFilters={sessionHistoryTypeFilters}
-            sessionHistoryTypeFilter={sessionHistoryTypeFilter}
-            setSessionHistoryTypeFilter={setSessionHistoryTypeFilter}
-            sessionHistorySearch={sessionHistorySearch}
-            setSessionHistorySearch={setSessionHistorySearch}
-            totalOpnameSessions={totalOpnameSessions}
-            totalActiveSessions={totalActiveSessions}
-            totalFinishedSessions={totalFinishedSessions}
-            totalCheckedFromSessions={totalCheckedFromSessions}
-            selectedSessionSummary={selectedSessionSummary}
-            setSelectedSessionSummary={setSelectedSessionSummary}
-            formatDateTime={formatDateTime}
-            getOpnameStatusClass={getOpnameStatusClass}
-            getDifferenceClass={getDifferenceClass}
-            formatDifference={formatDifference}
-            deleteStockOpnameHistory={deleteStockOpnameHistory}
-            openEditStockOpnameModal={openEditStockOpnameModal}
-            onClose={closeSessionHistoryModal}
-          />
-        )}
-
-        {selectedEditOpname && (
-          <EditStockOpnameModal
-            selectedEditOpname={selectedEditOpname}
-            editPhysicalStock={editPhysicalStock}
-            setEditPhysicalStock={setEditPhysicalStock}
-            editOpnameNote={editOpnameNote}
-            setEditOpnameNote={setEditOpnameNote}
-            onClose={closeEditStockOpnameModal}
-            onSubmit={saveEditStockOpname}
-          />
-        )}
-
-        {showAddProduct && (
-          <AddProductModal
-            onClose={() => setShowAddProduct(false)}
-            onSave={saveNewProduct}
-          />
-        )}
-
-        {selectedEditProduct && (
-          <EditProductModal
-            product={selectedEditProduct}
-            onClose={() => setSelectedEditProduct(null)}
-            onSave={saveEditedProduct}
-          />
-        )}
       </div>
     </MainLayout>
   )
 }
 
-function buildSessionSummary(session, items, status) {
-  return {
-    ...session,
-    status,
-    items,
-    totalChecked: items.length,
-    totalSesuai: countByStatus(items, "Sesuai"),
-    totalLebih: countByStatus(items, "Lebih"),
-    totalKurang: countByStatus(items, "Kurang"),
+function CompactProductStockTable({
+  products,
+  expandedProductId,
+  toggleExpandProduct,
+  formatRupiah,
+  getTotalStock,
+  getMinimumStock,
+  getVariantMinimumStock,
+  getStockStatus,
+  getProductStockSummary,
+  getProductStatusData,
+  isProductActive,
+}) {
+  if (products.length === 0) {
+    return <EmptyState text="Stok barang tidak ditemukan" />
   }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200">
+      <div className="hidden grid-cols-[1.4fr_0.7fr_0.8fr_0.7fr_0.7fr_auto] gap-4 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400 xl:grid">
+        <span>Barang</span>
+        <span>Kategori</span>
+        <span>Rak</span>
+        <span>Varian</span>
+        <span>Stok</span>
+        <span>Aksi</span>
+      </div>
+
+      <div className="divide-y divide-slate-100">
+        {products.map((product) => {
+          const isExpanded = expandedProductId === product.id
+          const productStock = getTotalStock(product)
+          const minimumStock = getMinimumStock(product)
+          const stockStatus = getProductStockSummary(product)
+          const productStatus = getProductStatusData(product)
+          const productActive = isProductActive(product)
+
+          return (
+            <div
+              key={product.id}
+              className={productActive ? "bg-white" : "bg-slate-50"}
+            >
+              <div className="grid gap-4 px-4 py-4 xl:grid-cols-[1.4fr_0.7fr_0.8fr_0.7fr_0.7fr_auto] xl:items-center">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="truncate text-base font-black text-slate-900">
+                      {product.name}
+                    </h3>
+
+                    <span
+                      className={`rounded-full border px-2.5 py-1 text-xs font-black ${stockStatus.badgeClass}`}
+                    >
+                      {stockStatus.label}
+                    </span>
+
+                    <span
+                      className={`rounded-full border px-2.5 py-1 text-xs font-black ${productStatus.badgeClass}`}
+                    >
+                      {productStatus.label}
+                    </span>
+                  </div>
+
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {product.brand || "-"}
+                  </p>
+
+                  <p className="mt-1 text-xs font-bold text-slate-400">
+                    SKU: {product.sku || "-"}
+                  </p>
+
+                  <p className="mt-0.5 text-xs font-bold text-slate-400">
+                    Barcode: {product.barcode || "-"}
+                  </p>
+                </div>
+
+                <TableInfo label="Kategori" value={product.category || "-"} />
+
+                <TableInfo label="Rak" value={product.rackLocation || "-"} />
+
+                <TableInfo
+                  label="Varian"
+                  value={`${product.variants?.length || 0} ${
+                    product.variantType || ""
+                  }`}
+                />
+
+                <div>
+                  <p className="text-xs font-bold text-slate-400 xl:hidden">
+                    Total Stok
+                  </p>
+
+                  <p className={`text-lg font-black ${stockStatus.textClass}`}>
+                    {productStock}
+                  </p>
+
+                  <p className="text-xs font-bold text-slate-400">
+                    Min: {minimumStock || "-"}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => toggleExpandProduct(product.id)}
+                  className={`w-full rounded-2xl px-4 py-2.5 text-sm font-black transition xl:w-auto ${
+                    isExpanded
+                      ? "bg-slate-900 text-white"
+                      : "bg-blue-600 text-white hover:bg-blue-700"
+                  }`}
+                >
+                  {isExpanded ? "Tutup" : "Detail"}
+                </button>
+              </div>
+
+              {isExpanded && (
+                <CompactProductDetail
+                  product={product}
+                  formatRupiah={formatRupiah}
+                  getVariantMinimumStock={getVariantMinimumStock}
+                  getStockStatus={getStockStatus}
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
-function countByStatus(items, status) {
-  return items.filter((item) => item.status === status).length
-}
-
-function getEmptySessionProgress() {
-  return {
-    targetItems: [],
-    checkedItems: [],
-    uncheckedItems: [],
-    targetTotal: 0,
-    checkedTotal: 0,
-    uncheckedTotal: 0,
-    progressPercent: 0,
-  }
-}
-
-function getSessionProgressData(session, historyItems, productsData = []) {
-  if (!session) return getEmptySessionProgress()
-
-  const targetItems = productsData.flatMap((product) => {
-    if (!session.categories?.includes(product.category)) return []
-
-    const variants = product.variants?.length
+function CompactProductDetail({
+  product,
+  formatRupiah,
+  getVariantMinimumStock,
+  getStockStatus,
+}) {
+  const variants =
+    product.variants && product.variants.length > 0
       ? product.variants
       : [
           {
@@ -1300,59 +570,234 @@ function getSessionProgressData(session, historyItems, productsData = []) {
             barcode: product.barcode,
             stock: product.stock,
             price: product.price,
+            minimumStock: product.minimumStock,
           },
         ]
 
-    return variants.map((variant) => ({
-      id: getOpnameItemKey({
-        productId: product.id,
-        variantId: variant.id,
-        variantValue: variant.value,
-        sku: variant.sku,
-        barcode: variant.barcode,
-      }),
-      product,
-      variant,
-      productId: product.id,
-      productName: product.name,
-      brand: product.brand,
-      category: product.category,
-      rackLocation: product.rackLocation,
-      variantId: variant.id,
-      variantValue: variant.value,
-      sku: variant.sku,
-      barcode: variant.barcode,
-      systemStock: Number(variant.stock || 0),
-    }))
-  })
+  return (
+    <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
+      <div className="mb-3">
+        <p className="text-sm font-black text-slate-800">
+          Detail Stok Per {product.variantType || "Varian"}
+        </p>
+        <p className="text-xs font-semibold text-slate-400">
+          Tampilan ini untuk melihat stok ukuran tanpa masuk ke mode Per Varian.
+        </p>
+      </div>
 
-  const checkedItems = historyItems.filter((item) => item.sessionId === session.id)
-  const checkedKeys = new Set(checkedItems.map((item) => getOpnameItemKey(item)))
-  const checkedTargetItems = targetItems.filter((item) => checkedKeys.has(item.id))
-  const uncheckedItems = targetItems.filter((item) => !checkedKeys.has(item.id))
-  const targetTotal = targetItems.length
-  const checkedTotal = checkedTargetItems.length
-  const uncheckedTotal = uncheckedItems.length
-  const progressPercent = targetTotal
-    ? Math.round((checkedTotal / targetTotal) * 100)
-    : 0
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <div className="min-w-[820px]">
+          <div className="grid grid-cols-[0.45fr_0.45fr_0.65fr_1.15fr_1.15fr_0.75fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400">
+            <span>Ukuran</span>
+            <span>Stok</span>
+            <span>Status</span>
+            <span>SKU</span>
+            <span>Barcode</span>
+            <span className="text-right">Harga</span>
+          </div>
 
-  return {
-    targetItems,
-    checkedItems,
-    uncheckedItems,
-    targetTotal,
-    checkedTotal,
-    uncheckedTotal,
-    progressPercent,
-  }
+          <div className="divide-y divide-slate-100">
+            {variants.map((variant) => {
+              const variantStock = Number(variant.stock || 0)
+              const variantMinimumStock = getVariantMinimumStock(
+                product,
+                variant
+              )
+              const variantStatus = getStockStatus(
+                variantStock,
+                variantMinimumStock
+              )
+
+              return (
+                <div
+                  key={variant.id || variant.value}
+                  className="grid grid-cols-[0.45fr_0.45fr_0.65fr_1.15fr_1.15fr_0.75fr] gap-3 px-4 py-3 text-sm font-bold text-slate-700"
+                >
+                  <span className="font-black text-slate-900">
+                    {variant.value}
+                  </span>
+
+                  <span className={`font-black ${variantStatus.textClass}`}>
+                    {variantStock}
+                  </span>
+
+                  <span>
+                    <span
+                      className={`inline-flex rounded-full border px-2 py-1 text-xs font-black ${variantStatus.badgeClass}`}
+                    >
+                      {variantStatus.label}
+                    </span>
+                  </span>
+
+                  <span className="break-all text-xs text-slate-500">
+                    {variant.sku || "-"}
+                  </span>
+
+                  <span className="break-all text-xs text-slate-500">
+                    {variant.barcode || "-"}
+                  </span>
+
+                  <span className="text-right text-xs font-black text-slate-900">
+                    {formatRupiah(variant.price)}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
-function getOpnameItemKey(item) {
-  return [
-    item.productId || "-",
-    item.variantId || item.variantValue || item.sku || item.barcode || "-",
-  ].join("::")
+function VariantStockTable({ rows, expandedRowId, toggleExpandRow, formatRupiah }) {
+  if (rows.length === 0) {
+    return <EmptyState text="Stok barang tidak ditemukan" />
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200">
+      <div className="hidden grid-cols-[1.35fr_0.45fr_0.75fr_0.8fr_1fr_0.55fr_0.65fr_auto] gap-4 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400 xl:grid">
+        <span>Barang</span>
+        <span>Ukuran</span>
+        <span>Kategori</span>
+        <span>Rak</span>
+        <span>SKU / Barcode</span>
+        <span>Stok</span>
+        <span>Status</span>
+        <span>Aksi</span>
+      </div>
+
+      <div className="divide-y divide-slate-100">
+        {rows.map((row) => {
+          const isExpanded = expandedRowId === row.id
+
+          return (
+            <div
+              key={row.id}
+              className={row.isActive ? "bg-white" : "bg-slate-50"}
+            >
+              <div className="grid gap-4 px-4 py-4 xl:grid-cols-[1.35fr_0.45fr_0.75fr_0.8fr_1fr_0.55fr_0.65fr_auto] xl:items-center">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="truncate text-base font-black text-slate-900">
+                      {row.productName}
+                    </h3>
+
+                    <span
+                      className={`rounded-full border px-2.5 py-1 text-xs font-black ${row.productStatus.badgeClass}`}
+                    >
+                      {row.productStatus.label}
+                    </span>
+                  </div>
+
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {row.brand || "-"}
+                  </p>
+                </div>
+
+                <TableInfo
+                  label="Ukuran"
+                  value={row.variantValue || "-"}
+                  strong
+                />
+
+                <TableInfo label="Kategori" value={row.category || "-"} />
+
+                <TableInfo label="Rak" value={row.rackLocation || "-"} />
+
+                <div>
+                  <p className="text-xs font-bold text-slate-400 xl:hidden">
+                    SKU / Barcode
+                  </p>
+
+                  <p className="break-all text-xs font-black text-slate-700">
+                    SKU: {row.sku || "-"}
+                  </p>
+
+                  <p className="mt-0.5 break-all text-xs font-bold text-slate-400">
+                    Barcode: {row.barcode || "-"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold text-slate-400 xl:hidden">
+                    Stok
+                  </p>
+                  <p className={`text-lg font-black ${row.stockStatus.textClass}`}>
+                    {row.stock}
+                  </p>
+
+                  <p className="text-xs font-bold text-slate-400">
+                    Min: {row.minimumStock || "-"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold text-slate-400 xl:hidden">
+                    Status
+                  </p>
+                  <span
+                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${row.stockStatus.badgeClass}`}
+                  >
+                    {row.stockStatus.label}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => toggleExpandRow(row.id)}
+                  className={`w-full rounded-2xl px-4 py-2.5 text-sm font-black transition xl:w-auto ${
+                    isExpanded
+                      ? "bg-slate-900 text-white"
+                      : "bg-blue-600 text-white hover:bg-blue-700"
+                  }`}
+                >
+                  {isExpanded ? "Tutup" : "Detail"}
+                </button>
+              </div>
+
+              {isExpanded && (
+                <StockRowDetail row={row} formatRupiah={formatRupiah} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function StockRowDetail({ row, formatRupiah }) {
+  return (
+    <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
+      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-4">
+        <DetailItem label="Nama Barang" value={row.productName || "-"} />
+        <DetailItem label="Brand" value={row.brand || "-"} />
+        <DetailItem label="Kategori" value={row.category || "-"} />
+        <DetailItem label="Letak Rak" value={row.rackLocation || "-"} />
+        <DetailItem
+          label={row.variantType ? `Varian ${row.variantType}` : "Varian"}
+          value={row.variantValue || "-"}
+        />
+        <DetailItem label="SKU Varian" value={row.sku || "-"} breakText />
+        <DetailItem
+          label="Barcode Varian"
+          value={row.barcode || "-"}
+          breakText
+        />
+        <DetailItem label="Harga" value={formatRupiah(row.price)} />
+        <DetailItem label="Stok Saat Ini" value={row.stock} />
+        <DetailItem label="Stok Minimum" value={row.minimumStock || "-"} />
+        <DetailItem label="Status Stok" value={row.stockStatus.label} />
+        <DetailItem label="Status Produk" value={row.productStatus.label} />
+      </div>
+
+      <div className="mt-3 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-bold text-blue-600">
+        Catatan: halaman ini hanya untuk monitoring stok. Edit data barang,
+        harga, SKU, barcode, dan status produk dilakukan dari menu Data Barang.
+      </div>
+    </div>
+  )
 }
 
 function SummaryCard({ label, value, color }) {
@@ -1395,164 +840,6 @@ function EmptyState({ text }) {
   return (
     <div className="flex h-64 items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 text-sm font-bold text-slate-400">
       {text}
-    </div>
-  )
-}
-
-function ProductDetail({
-  product,
-  productStock,
-  minimumStock,
-  stockStatus,
-  formatRupiah,
-  getVariantMinimumStock,
-  getStockStatus,
-  openStockOpnameModal,
-  onEditProduct,
-  onToggleProductActive,
-}) {
-  return (
-    <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
-      <div className="mb-4 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-4">
-        <DetailItem label="Harga Jual" value={formatRupiah(product.price)} />
-        <DetailItem label="SKU Barang" value={product.sku || "-"} breakText />
-        <DetailItem
-          label="Barcode Barang"
-          value={product.barcode || "-"}
-          breakText
-        />
-        <div>
-          <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-            Total Stok
-          </p>
-          <p className={`mt-1 text-lg font-black ${stockStatus.textClass}`}>
-            {productStock}
-          </p>
-        </div>
-        <DetailItem label="Brand" value={product.brand || "-"} />
-        <DetailItem label="Kategori" value={product.category || "-"} />
-        <DetailItem label="Stok Minimum" value={minimumStock || "-"} />
-        <DetailItem label="Letak Rak" value={product.rackLocation || "-"} />
-      </div>
-
-      <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-          Keterangan
-        </p>
-        <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">
-          {product.description || "-"}
-        </p>
-      </div>
-
-      <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-black text-slate-800">
-            Stok Per {product.variantType || "Varian"}
-          </p>
-          <p className="text-xs font-semibold text-slate-400">
-            Fokus utama tabel ini adalah stok fisik per ukuran untuk membantu
-            proses stok opname.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            onClick={() => onEditProduct(product)}
-            className="rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-blue-700"
-          >
-            Edit Produk
-          </button>
-
-          <button
-            onClick={() => onToggleProductActive(product)}
-            className={`rounded-2xl px-4 py-2.5 text-sm font-black transition ${
-              product.isActive === false
-                ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                : "bg-red-50 text-red-600 hover:bg-red-100"
-            }`}
-          >
-            {product.isActive === false ? "Aktifkan Lagi" : "Nonaktifkan"}
-          </button>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-        <div className="min-w-[900px]">
-          <div className="grid grid-cols-[0.45fr_0.45fr_0.65fr_1.15fr_1.15fr_0.75fr_0.45fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-400">
-            <span>Ukuran</span>
-            <span>Stok</span>
-            <span>Status</span>
-            <span>SKU</span>
-            <span>Barcode</span>
-            <span className="text-right">Harga</span>
-            <span className="text-right">Aksi</span>
-          </div>
-
-          <div className="divide-y divide-slate-100">
-            {product.variants?.map((variant) => {
-              const variantStock = Number(variant.stock || 0)
-              const variantMinimumStock = getVariantMinimumStock(
-                product,
-                variant
-              )
-              const variantStatus = getStockStatus(
-                variantStock,
-                variantMinimumStock
-              )
-
-              return (
-                <div
-                  key={variant.id || variant.value}
-                  className="grid grid-cols-[0.45fr_0.45fr_0.65fr_1.15fr_1.15fr_0.75fr_0.45fr] gap-3 px-4 py-3 text-sm font-bold text-slate-700"
-                >
-                  <span className="font-black text-slate-900">
-                    {variant.value}
-                  </span>
-
-                  <span className={`font-black ${variantStatus.textClass}`}>
-                    {variantStock}
-                  </span>
-
-                  <span>
-                    <span
-                      className={`inline-flex rounded-full border px-2 py-1 text-xs font-black ${variantStatus.badgeClass}`}
-                    >
-                      {variantStatus.label}
-                    </span>
-                  </span>
-
-                  <span className="break-all text-xs text-slate-500">
-                    {variant.sku || "-"}
-                  </span>
-
-                  <span className="break-all text-xs text-slate-500">
-                    {variant.barcode || "-"}
-                  </span>
-
-                  <span className="text-right text-xs font-black text-slate-900">
-                    {formatRupiah(variant.price)}
-                  </span>
-
-                  <span className="text-right">
-                    <button
-                      onClick={() => openStockOpnameModal(product, variant)}
-                      className="rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-black text-white transition hover:bg-slate-700"
-                    >
-                      SO
-                    </button>
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-3 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-bold text-blue-600">
-        Catatan: warna dan status stok tetap dihitung dari stok minimum
-        masing-masing ukuran, tapi angka minimum tidak ditampilkan di tabel agar
-        staff gudang fokus pada stok fisik saat stok opname.
-      </div>
     </div>
   )
 }
