@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom"
 
 import Dashboard from "../pages/Dashboard"
+import LaporanPenjualan from "../pages/LaporanPenjualan"
 import Produk from "../pages/Produk"
 import Kategori from "../pages/Kategori"
 import DataBarang from "../pages/DataBarang"
@@ -16,6 +17,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Dashboard />} />
+      <Route path="/laporan-penjualan" element={<LaporanPenjualan />} />
 
       <Route path="/produk" element={<Produk />} />
       <Route path="/kategori" element={<Kategori />} />

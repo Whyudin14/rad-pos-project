@@ -29,7 +29,16 @@ const mainMenuSections = [
         icon: "📊",
         path: "/riwayat-transaksi",
       },
-      { name: "Settlement", icon: "💰", path: "/settlement" },
+      {
+        name: "Laporan Penjualan",
+        icon: "📈",
+        path: "/laporan-penjualan",
+      },
+      {
+        name: "Settlement",
+        icon: "💰",
+        path: "/settlement",
+      },
     ],
   },
 ]
