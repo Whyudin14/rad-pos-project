@@ -7,6 +7,7 @@ import Kategori from "../pages/Kategori"
 import DataBarang from "../pages/DataBarang"
 import POSKasir from "../pages/POSKasir"
 import RiwayatTransaksi from "../pages/RiwayatTransaksi"
+import InsightProduk from "../pages/InsightProduk"
 import StokBarang from "../pages/StokBarang"
 import StockOpname from "../pages/StockOpname"
 import MutasiStok from "../pages/MutasiStok"
@@ -29,6 +30,7 @@ function AppRoutes() {
 
       <Route path="/kasir" element={<POSKasir />} />
       <Route path="/riwayat-transaksi" element={<RiwayatTransaksi />} />
+      <Route path="/insight-produk" element={<InsightProduk />} />
       <Route path="/settlement" element={<Settlement />} />
       <Route path="/pengaturan" element={<Pengaturan />} />
     </Routes>

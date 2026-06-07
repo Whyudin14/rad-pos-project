@@ -35,6 +35,11 @@ const mainMenuSections = [
         path: "/laporan-penjualan",
       },
       {
+        name: "Insight Produk",
+        icon: "📈",
+        path: "/insight-produk",
+      },
+      {
         name: "Settlement",
         icon: "💰",
         path: "/settlement",
