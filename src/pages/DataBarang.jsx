@@ -35,7 +35,11 @@ function DataBarang() {
   const formatDate = (date) => {
     if (!date) return "-"
 
-    return new Date(date).toLocaleDateString("id-ID", {
+    const parsedDate = new Date(date)
+
+    if (Number.isNaN(parsedDate.getTime())) return "-"
+
+    return parsedDate.toLocaleDateString("id-ID", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -56,6 +60,41 @@ function DataBarang() {
 
   const isProductActive = (product) => {
     return product.isActive !== false
+  }
+
+  const getStockAgeStatusLabel = (status) => {
+    const labels = {
+      accurate: "Akurat",
+      estimated: "Estimasi",
+      unknown: "Tidak diketahui",
+    }
+
+    return labels[status] || "Tidak diketahui"
+  }
+
+  const getStockAgeStatusData = (status) => {
+    if (status === "accurate") {
+      return {
+        label: "Akurat",
+        badgeClass: "bg-emerald-50 text-emerald-600 border-emerald-100",
+      }
+    }
+
+    if (status === "estimated") {
+      return {
+        label: "Estimasi",
+        badgeClass: "bg-amber-50 text-amber-600 border-amber-100",
+      }
+    }
+
+    return {
+      label: "Tidak diketahui",
+      badgeClass: "bg-slate-100 text-slate-500 border-slate-200",
+    }
+  }
+
+  const isProductAgeUnknown = (product) => {
+    return !product.stockInDate || product.stockAgeStatus === "unknown"
   }
 
   const getProductStatusData = (product) => {
@@ -86,6 +125,10 @@ function DataBarang() {
     return total + Number(product.variants?.length || 0)
   }, 0)
 
+  const totalUnknownAgeProducts = productList.filter((product) => {
+    return isProductActive(product) && getTotalStock(product) > 0 && isProductAgeUnknown(product)
+  }).length
+
   const filteredProducts = productList.filter((product) => {
     const keyword = searchTerm.toLowerCase()
     const productActive = isProductActive(product)
@@ -97,7 +140,8 @@ function DataBarang() {
       product.sku?.toLowerCase().includes(keyword) ||
       product.barcode?.includes(searchTerm) ||
       product.rackLocation?.toLowerCase().includes(keyword) ||
-      product.description?.toLowerCase().includes(keyword)
+      product.description?.toLowerCase().includes(keyword) ||
+      product.stockAgeNote?.toLowerCase().includes(keyword)
 
     const matchVariant = product.variants?.some((variant) => {
       return (
@@ -133,6 +177,9 @@ function DataBarang() {
     const productWithStatus = {
       ...newProduct,
       isActive: newProduct.isActive ?? true,
+      stockInDate: newProduct.stockInDate || "",
+      stockAgeStatus: newProduct.stockAgeStatus || "unknown",
+      stockAgeNote: newProduct.stockAgeNote || "",
     }
 
     const updatedProducts = [productWithStatus, ...productList]
@@ -152,6 +199,9 @@ function DataBarang() {
         ...product,
         ...updatedProduct,
         isActive: updatedProduct.isActive ?? product.isActive ?? true,
+        stockInDate: updatedProduct.stockInDate || "",
+        stockAgeStatus: updatedProduct.stockAgeStatus || "unknown",
+        stockAgeNote: updatedProduct.stockAgeNote || "",
         updatedAt: new Date().toISOString(),
       }
     })
@@ -226,7 +276,7 @@ Produk tidak akan muncul di POS Kasir, tapi data produk dan riwayat transaksi la
 
             <p className="mt-1 text-sm font-semibold text-slate-500">
               Kelola data operasional barang, varian, SKU, barcode, rak, harga,
-              dan status produk.
+              umur barang, dan status produk.
             </p>
           </div>
 
@@ -238,11 +288,12 @@ Produk tidak akan muncul di POS Kasir, tapi data produk dan riwayat transaksi la
           </button>
         </div>
 
-        <div className="mb-5 grid gap-3 md:grid-cols-4">
+        <div className="mb-5 grid gap-3 md:grid-cols-5">
           <SummaryCard label="Total Produk" value={totalProducts} color="slate" />
           <SummaryCard label="Produk Aktif" value={totalActiveProducts} color="emerald" />
           <SummaryCard label="Nonaktif" value={totalInactiveProducts} color="red" />
           <SummaryCard label="Total Varian" value={totalVariants} color="blue" />
+          <SummaryCard label="Umur Belum Diisi" value={totalUnknownAgeProducts} color="amber" />
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -313,6 +364,13 @@ Produk tidak akan muncul di POS Kasir, tapi data produk dan riwayat transaksi la
                   const isExpanded = expandedProductId === product.id
                   const productStatus = getProductStatusData(product)
                   const productActive = isProductActive(product)
+                  const stockAgeStatus = getStockAgeStatusData(
+                    product.stockAgeStatus || "unknown"
+                  )
+                  const productHasUnknownAge =
+                    productActive &&
+                    getTotalStock(product) > 0 &&
+                    isProductAgeUnknown(product)
 
                   return (
                     <div
@@ -331,6 +389,12 @@ Produk tidak akan muncul di POS Kasir, tapi data produk dan riwayat transaksi la
                             >
                               {productStatus.label}
                             </span>
+
+                            {productHasUnknownAge && (
+                              <span className="rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-600">
+                                Umur belum diisi
+                              </span>
+                            )}
                           </div>
 
                           <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -348,6 +412,15 @@ Produk tidak akan muncul di POS Kasir, tapi data produk dan riwayat transaksi la
                           <p className="mt-0.5 text-xs font-bold text-slate-400">
                             Rak: {product.rackLocation || "-"}
                           </p>
+
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-400">
+                            <span>Tanggal masuk: {formatDate(product.stockInDate)}</span>
+                            <span
+                              className={`rounded-full border px-2 py-0.5 text-[11px] font-black ${stockAgeStatus.badgeClass}`}
+                            >
+                              {stockAgeStatus.label}
+                            </span>
+                          </div>
                         </div>
 
                         <TableInfo
@@ -398,6 +471,8 @@ Produk tidak akan muncul di POS Kasir, tapi data produk dan riwayat transaksi la
                           minimumStock={getMinimumStock(product)}
                           formatRupiah={formatRupiah}
                           formatDate={formatDate}
+                          getStockAgeStatusLabel={getStockAgeStatusLabel}
+                          getStockAgeStatusData={getStockAgeStatusData}
                           onEditProduct={setSelectedEditProduct}
                           onToggleProductActive={toggleProductActive}
                         />
@@ -479,9 +554,15 @@ function ProductDetail({
   minimumStock,
   formatRupiah,
   formatDate,
+  getStockAgeStatusLabel,
+  getStockAgeStatusData,
   onEditProduct,
   onToggleProductActive,
 }) {
+  const stockAgeStatus = getStockAgeStatusData(
+    product.stockAgeStatus || "unknown"
+  )
+
   return (
     <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
       <div className="mb-4 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-4">
@@ -498,13 +579,60 @@ function ProductDetail({
         <DetailItem label="Stok Minimum" value={minimumStock || "-"} />
         <DetailItem label="Letak Rak" value={product.rackLocation || "-"} />
         <DetailItem
-          label="Tanggal Masuk"
-          value={formatDate(product.entryDate || product.createdAt)}
+          label="Tanggal Masuk Barang"
+          value={formatDate(product.stockInDate)}
+        />
+        <DetailItem
+          label="Status Umur"
+          value={getStockAgeStatusLabel(product.stockAgeStatus || "unknown")}
         />
         <DetailItem
           label="Terakhir Diubah"
           value={formatDate(product.updatedAt)}
         />
+      </div>
+
+      <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+            Umur Barang
+          </p>
+
+          <span
+            className={`rounded-full border px-2.5 py-1 text-xs font-black ${stockAgeStatus.badgeClass}`}
+          >
+            {stockAgeStatus.label}
+          </span>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-2xl bg-slate-50 px-4 py-3">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+              Tanggal Masuk Barang
+            </p>
+            <p className="mt-1 text-sm font-black text-slate-900">
+              {formatDate(product.stockInDate)}
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-slate-50 px-4 py-3">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+              Status Data Umur
+            </p>
+            <p className="mt-1 text-sm font-black text-slate-900">
+              {getStockAgeStatusLabel(product.stockAgeStatus || "unknown")}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-3">
+          <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+            Catatan Umur Barang
+          </p>
+          <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">
+            {product.stockAgeNote || "-"}
+          </p>
+        </div>
       </div>
 
       <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">

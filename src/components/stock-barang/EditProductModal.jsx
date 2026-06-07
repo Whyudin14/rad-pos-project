@@ -12,6 +12,24 @@ const categoryOptions = [
   "Aksesoris",
 ]
 
+const stockAgeStatusOptions = [
+  {
+    value: "accurate",
+    label: "Akurat",
+    description: "Tanggal masuk barang diketahui dengan pasti.",
+  },
+  {
+    value: "estimated",
+    label: "Estimasi",
+    description: "Tanggal masuk barang hanya perkiraan.",
+  },
+  {
+    value: "unknown",
+    label: "Tidak diketahui",
+    description: "Tanggal masuk barang belum diketahui.",
+  },
+]
+
 function EditProductModal({ product, onClose, onSave }) {
   const [formData, setFormData] = useState({
     name: product?.name || "",
@@ -26,6 +44,9 @@ function EditProductModal({ product, onClose, onSave }) {
     description: product?.description || "",
     showInPOS: product?.showInPOS ?? true,
     useStock: product?.useStock ?? true,
+    stockInDate: product?.stockInDate || "",
+    stockAgeStatus: product?.stockAgeStatus || "unknown",
+    stockAgeNote: product?.stockAgeNote || "",
   })
 
   const [variants, setVariants] = useState(
@@ -150,6 +171,16 @@ function EditProductModal({ product, onClose, onSave }) {
       return
     }
 
+    if (
+      formData.stockAgeStatus !== "unknown" &&
+      !String(formData.stockInDate || "").trim()
+    ) {
+      alert(
+        "Tanggal masuk barang wajib diisi jika status umur barang Akurat atau Estimasi."
+      )
+      return
+    }
+
     const filledVariants = variants.filter((variant) => {
       return (
         String(variant.value || "").trim() ||
@@ -218,6 +249,10 @@ function EditProductModal({ product, onClose, onSave }) {
       }
     })
 
+    const finalStockAgeStatus = formData.stockInDate
+      ? formData.stockAgeStatus
+      : "unknown"
+
     const updatedProduct = {
       ...product,
       name: formData.name.trim(),
@@ -233,6 +268,9 @@ function EditProductModal({ product, onClose, onSave }) {
       minimumStock: Number(formData.minimumStock || 0),
       rackLocation: formData.rackLocation,
       description: formData.description,
+      stockInDate: formData.stockInDate,
+      stockAgeStatus: finalStockAgeStatus,
+      stockAgeNote: formData.stockAgeNote,
       variantType: product.variantType || "Ukuran",
       showInPOS: formData.showInPOS,
       useStock: formData.useStock,
@@ -257,7 +295,7 @@ function EditProductModal({ product, onClose, onSave }) {
             </h2>
 
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              Ubah data produk dan stok per ukuran.
+              Ubah data produk, stok per ukuran, dan data umur barang.
             </p>
           </div>
 
@@ -369,6 +407,50 @@ function EditProductModal({ product, onClose, onSave }) {
                     label="Markup"
                     value={`${marginPercent > 0 ? marginPercent : 0}%`}
                   />
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Umur Barang">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <InputField
+                    label="Tanggal Masuk Barang"
+                    type="date"
+                    value={formData.stockInDate}
+                    onChange={(value) => handleChange("stockInDate", value)}
+                  />
+
+                  <div>
+                    <label className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">
+                      Status Umur Barang
+                    </label>
+
+                    <select
+                      value={formData.stockAgeStatus}
+                      onChange={(e) =>
+                        handleChange("stockAgeStatus", e.target.value)
+                      }
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                    >
+                      {stockAgeStatusOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <textarea
+                  value={formData.stockAgeNote}
+                  onChange={(e) => handleChange("stockAgeNote", e.target.value)}
+                  placeholder="Contoh: Barang lama sebelum sistem, estimasi masuk sekitar Mei 2025..."
+                  className="mt-4 min-h-24 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                />
+
+                <div className="mt-3 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-bold leading-relaxed text-blue-600">
+                  Gunakan Akurat untuk barang baru/tanggal pasti, Estimasi untuk
+                  barang lama yang tanggalnya perkiraan, dan Tidak diketahui
+                  kalau tanggal masuk belum bisa dipastikan.
                 </div>
               </SectionCard>
             </div>
