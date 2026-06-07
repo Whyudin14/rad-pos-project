@@ -9,6 +9,25 @@ import {
   getCurrentUserRoleLabel,
 } from "../utils/accessControl"
 
+const MONTH_OPTIONS = [
+  { value: 0, label: "Januari" },
+  { value: 1, label: "Februari" },
+  { value: 2, label: "Maret" },
+  { value: 3, label: "April" },
+  { value: 4, label: "Mei" },
+  { value: 5, label: "Juni" },
+  { value: 6, label: "Juli" },
+  { value: 7, label: "Agustus" },
+  { value: 8, label: "September" },
+  { value: 9, label: "Oktober" },
+  { value: 10, label: "November" },
+  { value: 11, label: "Desember" },
+]
+
+const getTodayInputValue = () => {
+  return new Date().toISOString().slice(0, 10)
+}
+
 const formatRupiah = (number) => {
   return `Rp ${Number(number || 0).toLocaleString("id-ID")}`
 }
@@ -111,70 +130,126 @@ const isVoidTransaction = (transaction) => {
   return transaction.status === "Void"
 }
 
-const isSameDay = (dateA, dateB) => {
-  return (
-    dateA.getFullYear() === dateB.getFullYear() &&
-    dateA.getMonth() === dateB.getMonth() &&
-    dateA.getDate() === dateB.getDate()
-  )
+const parseInputDate = (value, endOfDay = false) => {
+  if (!value) return null
+
+  const date = new Date(`${value}T00:00:00`)
+
+  if (Number.isNaN(date.getTime())) return null
+
+  if (endOfDay) {
+    date.setHours(23, 59, 59, 999)
+  } else {
+    date.setHours(0, 0, 0, 0)
+  }
+
+  return date
 }
 
-const getStartOfWeek = (date) => {
-  const copiedDate = new Date(date)
-  const day = copiedDate.getDay()
-  const diff = copiedDate.getDate() - day + (day === 0 ? -6 : 1)
-
-  copiedDate.setDate(diff)
-  copiedDate.setHours(0, 0, 0, 0)
-
-  return copiedDate
-}
-
-const isInSelectedPeriod = (transaction, period) => {
-  const now = new Date()
+const isInReportPeriod = ({
+  transaction,
+  reportMode,
+  selectedDate,
+  selectedMonth,
+  selectedYear,
+  rangeStartDate,
+  rangeEndDate,
+}) => {
   const transactionDate = new Date(getTransactionDate(transaction))
 
   if (Number.isNaN(transactionDate.getTime())) return false
 
-  if (period === "daily") {
-    return isSameDay(transactionDate, now)
-  }
+  if (reportMode === "date") {
+    const targetDate = parseInputDate(selectedDate)
 
-  if (period === "weekly") {
-    const startOfWeek = getStartOfWeek(now)
-    const endOfWeek = new Date(startOfWeek)
-    endOfWeek.setDate(startOfWeek.getDate() + 7)
+    if (!targetDate) return true
 
-    return transactionDate >= startOfWeek && transactionDate < endOfWeek
-  }
-
-  if (period === "monthly") {
     return (
-      transactionDate.getFullYear() === now.getFullYear() &&
-      transactionDate.getMonth() === now.getMonth()
+      transactionDate.getFullYear() === targetDate.getFullYear() &&
+      transactionDate.getMonth() === targetDate.getMonth() &&
+      transactionDate.getDate() === targetDate.getDate()
     )
   }
 
-  if (period === "yearly") {
-    return transactionDate.getFullYear() === now.getFullYear()
+  if (reportMode === "month") {
+    return (
+      transactionDate.getFullYear() === Number(selectedYear) &&
+      transactionDate.getMonth() === Number(selectedMonth)
+    )
+  }
+
+  if (reportMode === "year") {
+    return transactionDate.getFullYear() === Number(selectedYear)
+  }
+
+  if (reportMode === "range") {
+    const startDate = parseInputDate(rangeStartDate)
+    const endDate = parseInputDate(rangeEndDate, true)
+
+    if (!startDate && !endDate) return true
+    if (startDate && transactionDate < startDate) return false
+    if (endDate && transactionDate > endDate) return false
+
+    return true
   }
 
   return true
 }
 
-const getPeriodLabel = (period) => {
-  const labels = {
-    daily: "Hari Ini",
-    weekly: "Minggu Ini",
-    monthly: "Bulan Ini",
-    yearly: "Tahun Ini",
+const getReportLabel = ({
+  reportMode,
+  selectedDate,
+  selectedMonth,
+  selectedYear,
+  rangeStartDate,
+  rangeEndDate,
+}) => {
+  if (reportMode === "date") {
+    return selectedDate ? formatDate(`${selectedDate}T00:00:00`) : "Tanggal"
   }
 
-  return labels[period] || "Hari Ini"
+  if (reportMode === "month") {
+    const monthLabel =
+      MONTH_OPTIONS.find((month) => month.value === Number(selectedMonth))
+        ?.label || "Bulan"
+
+    return `${monthLabel} ${selectedYear}`
+  }
+
+  if (reportMode === "year") {
+    return `Tahun ${selectedYear}`
+  }
+
+  if (reportMode === "range") {
+    if (rangeStartDate && rangeEndDate) {
+      return `${formatDate(`${rangeStartDate}T00:00:00`)} - ${formatDate(
+        `${rangeEndDate}T00:00:00`
+      )}`
+    }
+
+    if (rangeStartDate) {
+      return `Mulai ${formatDate(`${rangeStartDate}T00:00:00`)}`
+    }
+
+    if (rangeEndDate) {
+      return `Sampai ${formatDate(`${rangeEndDate}T00:00:00`)}`
+    }
+
+    return "Semua Tanggal"
+  }
+
+  return "Periode"
 }
 
 function LaporanPenjualan() {
-  const [selectedPeriod, setSelectedPeriod] = useState("daily")
+  const now = new Date()
+
+  const [reportMode, setReportMode] = useState("date")
+  const [selectedDate, setSelectedDate] = useState(getTodayInputValue())
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth())
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
+  const [rangeStartDate, setRangeStartDate] = useState("")
+  const [rangeEndDate, setRangeEndDate] = useState("")
   const [searchKeyword, setSearchKeyword] = useState("")
   const [statusFilter, setStatusFilter] = useState("valid")
 
@@ -186,7 +261,15 @@ function LaporanPenjualan() {
     const transactions = getTransactions()
 
     const periodTransactions = transactions.filter((transaction) => {
-      return isInSelectedPeriod(transaction, selectedPeriod)
+      return isInReportPeriod({
+        transaction,
+        reportMode,
+        selectedDate,
+        selectedMonth,
+        selectedYear,
+        rangeStartDate,
+        rangeEndDate,
+      })
     })
 
     const statusTransactions = periodTransactions.filter((transaction) => {
@@ -237,9 +320,25 @@ function LaporanPenjualan() {
       totalQty,
       averageTransaction,
     }
-  }, [selectedPeriod, searchKeyword, statusFilter])
+  }, [
+    reportMode,
+    selectedDate,
+    selectedMonth,
+    selectedYear,
+    rangeStartDate,
+    rangeEndDate,
+    searchKeyword,
+    statusFilter,
+  ])
 
-  const periodLabel = getPeriodLabel(selectedPeriod)
+  const reportLabel = getReportLabel({
+    reportMode,
+    selectedDate,
+    selectedMonth,
+    selectedYear,
+    rangeStartDate,
+    rangeEndDate,
+  })
 
   return (
     <MainLayout>
@@ -252,7 +351,8 @@ function LaporanPenjualan() {
             Ringkasan Penjualan
           </h2>
           <p className="text-slate-500 mt-1">
-            Pantau transaksi berdasarkan periode, status, dan invoice.
+            Pantau transaksi berdasarkan tanggal, bulan, tahun, range, status,
+            dan invoice.
           </p>
         </div>
 
@@ -263,7 +363,7 @@ function LaporanPenjualan() {
       </header>
 
       <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 mb-6">
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_auto_auto] xl:items-center">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_auto_auto] xl:items-start">
           <div>
             <label className="text-xs font-semibold text-slate-500">
               Cari Transaksi
@@ -279,29 +379,29 @@ function LaporanPenjualan() {
 
           <div>
             <label className="text-xs font-semibold text-slate-500">
-              Periode
+              Jenis Laporan
             </label>
             <div className="mt-2 flex flex-wrap gap-2">
               {[
-                { key: "daily", label: "Harian" },
-                { key: "weekly", label: "Mingguan" },
-                { key: "monthly", label: "Bulanan" },
-                { key: "yearly", label: "Tahunan" },
-              ].map((period) => {
-                const isActive = selectedPeriod === period.key
+                { key: "date", label: "Tanggal" },
+                { key: "month", label: "Bulan" },
+                { key: "year", label: "Tahun" },
+                { key: "range", label: "Custom" },
+              ].map((mode) => {
+                const isActive = reportMode === mode.key
 
                 return (
                   <button
-                    key={period.key}
+                    key={mode.key}
                     type="button"
-                    onClick={() => setSelectedPeriod(period.key)}
+                    onClick={() => setReportMode(mode.key)}
                     className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
                       isActive
                         ? "bg-blue-600 text-white shadow-sm"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    {period.label}
+                    {mode.label}
                   </button>
                 )
               })}
@@ -323,19 +423,129 @@ function LaporanPenjualan() {
             </select>
           </div>
         </div>
+
+        <div className="mt-5 border-t border-slate-100 pt-5">
+          {reportMode === "date" && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-500">
+                  Pilih Tanggal
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(event) => setSelectedDate(event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+          )}
+
+          {reportMode === "month" && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-500">
+                  Pilih Bulan
+                </label>
+                <select
+                  value={selectedMonth}
+                  onChange={(event) => setSelectedMonth(event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500"
+                >
+                  {MONTH_OPTIONS.map((month) => (
+                    <option key={month.value} value={month.value}>
+                      {month.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-500">
+                  Pilih Tahun
+                </label>
+                <input
+                  type="number"
+                  value={selectedYear}
+                  onChange={(event) => setSelectedYear(event.target.value)}
+                  min="2020"
+                  max="2100"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+          )}
+
+          {reportMode === "year" && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-500">
+                  Pilih Tahun
+                </label>
+                <input
+                  type="number"
+                  value={selectedYear}
+                  onChange={(event) => setSelectedYear(event.target.value)}
+                  min="2020"
+                  max="2100"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+          )}
+
+          {reportMode === "range" && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <div>
+                <label className="text-xs font-semibold text-slate-500">
+                  Dari Tanggal
+                </label>
+                <input
+                  type="date"
+                  value={rangeStartDate}
+                  onChange={(event) => setRangeStartDate(event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-500">
+                  Sampai Tanggal
+                </label>
+                <input
+                  type="date"
+                  value={rangeEndDate}
+                  onChange={(event) => setRangeEndDate(event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setRangeStartDate("")
+                  setRangeEndDate("")
+                }}
+                className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-200"
+              >
+                Reset
+              </button>
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="grid grid-cols-1 gap-5 mb-8 sm:grid-cols-2 xl:grid-cols-4">
         {userCanViewFinance ? (
           <StatCard
-            title={`Omzet ${periodLabel}`}
+            title="Omzet"
             value={formatRupiah(reportData.totalSales)}
-            note="Tidak termasuk transaksi void"
+            note={reportLabel}
             icon="💰"
           />
         ) : (
           <StatCard
-            title={`Omzet ${periodLabel}`}
+            title="Omzet"
             value="Terkunci"
             note="Hanya owner/admin yang bisa melihat nominal"
             icon="🔒"
@@ -352,7 +562,7 @@ function LaporanPenjualan() {
         <StatCard
           title="Item Terjual"
           value={`${reportData.totalQty} Item`}
-          note="Boleh dilihat staff/kasir"
+          note={reportLabel}
           icon="👟"
         />
 
@@ -399,7 +609,7 @@ function LaporanPenjualan() {
             </h3>
             <p className="text-sm text-slate-400">
               Menampilkan {reportData.transactions.length} transaksi berdasarkan
-              filter aktif.
+              filter aktif: {reportLabel}.
             </p>
           </div>
 
@@ -414,7 +624,8 @@ function LaporanPenjualan() {
               Belum ada transaksi
             </p>
             <p className="text-sm text-slate-400 mt-1">
-              Coba ubah periode, status, atau kata kunci pencarian.
+              Coba ubah tanggal, bulan, tahun, range, status, atau kata kunci
+              pencarian.
             </p>
           </div>
         ) : (
