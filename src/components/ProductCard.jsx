@@ -7,6 +7,13 @@ function ProductCard({ product, onAddToCart }) {
   const productColor = product.color || product.warna || ""
   const productStock = Number(product.stock || 0)
   const productPrice = Number(product.price || product.hargaJual || 0)
+  const productImage =
+    product.image ||
+    product.imageUrl ||
+    product.photo ||
+    product.photoUrl ||
+    product.thumbnail ||
+    ""
 
   return (
     <button
@@ -14,8 +21,16 @@ function ProductCard({ product, onAddToCart }) {
       onClick={() => onAddToCart(product)}
       className="group flex min-h-[200px] flex-col rounded-[18px] border border-slate-300 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-500 hover:shadow-md focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100"
     >
-      <div className="mb-4 flex h-40 items-center justify-center rounded-[18px] bg-slate-100">
-        <span className="text-6xl transition group-hover:scale-105">👟</span>
+      <div className="mb-4 flex h-40 items-center justify-center overflow-hidden rounded-[18px] bg-slate-100">
+        {productImage ? (
+          <img
+            src={productImage}
+            alt={productName}
+            className="h-full w-full object-cover transition group-hover:scale-105"
+          />
+        ) : (
+          <span className="text-6xl transition group-hover:scale-105">👟</span>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col">
@@ -27,14 +42,14 @@ function ProductCard({ product, onAddToCart }) {
             {productName}
           </h3>
 
-            {productColor && (
-              <p
-                title={productColor}
-                className="mt-1.5 line-clamp-2 min-h-[32px] text-xs font-black uppercase leading-tight tracking-wide text-blue-600"
-              >
-                {productColor}
-              </p>
-            )}
+          {productColor && (
+            <p
+              title={productColor}
+              className="mt-1.5 line-clamp-2 min-h-[32px] text-xs font-black uppercase leading-tight tracking-wide text-blue-600"
+            >
+              {productColor}
+            </p>
+          )}
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3">

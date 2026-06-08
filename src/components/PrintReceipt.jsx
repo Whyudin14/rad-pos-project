@@ -250,7 +250,23 @@ function PrintReceipt({ transaction }) {
 
       <div className="line" />
 
+      <div className="exchange-policy">
+        <p className="policy-title text-center font-black">KEBIJAKAN PENUKARAN BARANG</p>
+        <p>1. Penukaran maksimal 1x24 jam sejak pembelian.</p>
+        <p>2. Wajib membawa struk asli.</p>
+        <p>
+          3. Barang belum dipakai, belum dicuci, tidak rusak, dan masih lengkap
+          box/tag/label.
+        </p>
+        <p>4. Penukaran mengikuti ketersediaan stok.</p>
+        <p>5. Barang promo tertentu tidak dapat ditukar/dikembalikan.</p>
+        <p>6. Barang yang sudah dibeli tidak dapat diuangkan kembali.</p>
+      </div>
+
+      <div className="line" />
+
       <div className="receipt-footer">
+        <p>Simpan struk ini sebagai bukti pembelian.</p>
         <p>You are happy i'm happy 🙌</p>
         <p>Terima kasih atas kunjungannya!</p>
       </div>

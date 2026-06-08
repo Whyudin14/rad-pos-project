@@ -104,6 +104,14 @@ function POSKasir() {
 
     const parsedProduct = splitProductNameAndColor(rawName)
 
+    const productImage =
+      product.image ||
+      product.imageUrl ||
+      product.photo ||
+      product.photoUrl ||
+      product.thumbnail ||
+      ""
+
     return {
       ...product,
       id: product.id || product.productId || crypto.randomUUID(),
@@ -115,6 +123,8 @@ function POSKasir() {
       price: lowestPrice,
       stock: totalStock,
       variants,
+      image: productImage,
+      imageUrl: productImage,
     }
   }
 
@@ -211,6 +221,8 @@ function POSKasir() {
     const variantBarcode =
       variantData.barcode || variantData.variantBarcode || ""
 
+    const productImage = product.image || product.imageUrl || ""
+
     const newItem = {
       ...product,
 
@@ -222,6 +234,8 @@ function POSKasir() {
       name: product.name,
       category: product.category,
       brand: product.brand,
+      image: productImage,
+      imageUrl: productImage,
 
       qty: 1,
       stock: variantStock,
@@ -568,6 +582,22 @@ function POSKasir() {
             .total {
               margin-bottom: 3px;
               font-size: 12.5px;
+              font-weight: 900;
+            }
+
+            .exchange-policy {
+              font-size: 9.5px;
+              line-height: 1.28;
+            }
+
+            .exchange-policy p {
+              margin: 0 0 2px;
+            }
+
+            .exchange-policy .policy-title {
+              margin-bottom: 4px;
+              text-align: center;
+              font-size: 10px;
               font-weight: 900;
             }
 

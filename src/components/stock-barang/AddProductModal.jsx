@@ -1,15 +1,19 @@
 import { useMemo, useState } from "react"
 
 const categoryOptions = [
-  "Running",
-  "Running Junior",
-  "Lifestyle",
-  "Lifestyle Junior",
   "Football",
   "Football Junior",
   "Futsal",
   "Futsal Junior",
-  "Aksesoris",
+  "Turf",
+  "Running",
+  "Running Junior",
+  "Trail-Running",
+  "Lifestyle",
+  "Sandals",
+  "Apparel",
+  "Accessories",
+  "Equipment",
 ]
 
 const stockAgeStatusOptions = [
@@ -43,7 +47,8 @@ function AddProductModal({ onClose, onSave }) {
   const [formData, setFormData] = useState({
     name: "",
     brand: "",
-    category: "Running",
+    image: "",
+    category: "Football",
     sku: "",
     barcode: "",
     basePrice: "",
@@ -85,6 +90,34 @@ function AddProductModal({ onClose, onSave }) {
       ...current,
       [field]: value,
     }))
+  }
+
+  const handleImageUpload = (file) => {
+    if (!file) return
+
+    if (!file.type.startsWith("image/")) {
+      alert("File harus berupa gambar.")
+      return
+    }
+
+    const maxSize = 2 * 1024 * 1024
+
+    if (file.size > maxSize) {
+      alert("Ukuran foto maksimal 2MB agar data localStorage tetap aman.")
+      return
+    }
+
+    const reader = new FileReader()
+
+    reader.onloadend = () => {
+      handleChange("image", reader.result || "")
+    }
+
+    reader.readAsDataURL(file)
+  }
+
+  const removeProductImage = () => {
+    handleChange("image", "")
   }
 
   const handleVariantChange = (index, field, value) => {
@@ -251,6 +284,8 @@ function AddProductModal({ onClose, onSave }) {
       name: formData.name.trim(),
       brand: formData.brand.trim(),
       category: formData.category,
+      image: formData.image || "",
+      imageUrl: formData.image || "",
       sku: productSku,
       barcode: formData.barcode,
       basePrice: Number(formData.basePrice || 0),
@@ -455,6 +490,15 @@ function AddProductModal({ onClose, onSave }) {
             </div>
 
             <div className="space-y-5">
+              <SectionCard title="Foto Produk">
+                <ProductImageUploader
+                  image={formData.image}
+                  onUpload={handleImageUpload}
+                  onRemove={removeProductImage}
+                  uploadLabel="Upload Foto"
+                />
+              </SectionCard>
+
               <SectionCard title="Pengaturan">
                 <div className="space-y-3">
                   <CheckRow
@@ -691,6 +735,61 @@ function CheckRow({ checked, onChange, label, description }) {
         </span>
       </span>
     </button>
+  )
+}
+
+function ProductImageUploader({ image, onUpload, onRemove, uploadLabel }) {
+  return (
+    <div>
+      <div className="mb-3 flex h-52 items-center justify-center overflow-hidden rounded-3xl border border-dashed border-slate-300 bg-slate-50">
+        {image ? (
+          <img
+            src={image}
+            alt="Preview produk"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="px-4 text-center">
+            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-3xl bg-white text-4xl shadow-sm">
+              👟
+            </div>
+            <p className="text-sm font-black text-slate-700">
+              Belum ada foto produk
+            </p>
+            <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-400">
+              Foto opsional. Produk tetap bisa disimpan tanpa foto.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <label className="flex cursor-pointer items-center justify-center rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white transition hover:bg-blue-700">
+          {uploadLabel || "Upload Foto"}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => onUpload(e.target.files?.[0])}
+            className="hidden"
+          />
+        </label>
+
+        {image && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-black text-red-600 transition hover:bg-red-100"
+          >
+            Hapus Foto
+          </button>
+        )}
+      </div>
+
+      <p className="mt-3 text-xs font-semibold leading-relaxed text-slate-400">
+        Saran: gunakan foto produk rasio kotak atau close-up produk. Maksimal
+        2MB agar penyimpanan tetap ringan.
+      </p>
+    </div>
   )
 }
 
