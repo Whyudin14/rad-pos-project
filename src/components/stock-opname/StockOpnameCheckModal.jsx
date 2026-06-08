@@ -197,8 +197,10 @@ function StockOpnameCheckModal({
 
         {hasPhysicalStock && selectedDifference !== 0 && (
           <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs font-bold leading-relaxed text-amber-700">
-            Ada selisih stok. Sebaiknya isi catatan singkat agar owner/admin
-            lebih mudah mengecek penyebabnya sebelum koreksi stok dilakukan.
+            Ada selisih stok. Hasil SO akan disimpan sebagai data investigasi,
+            tetapi stok sistem tidak akan berubah otomatis. Cek dulu penyebab
+            selisih seperti barang hilang, salah rak, tertukar ukuran, retur,
+            atau transaksi yang belum sesuai.
           </div>
         )}
 
@@ -217,7 +219,8 @@ function StockOpnameCheckModal({
 
         {showOpnameSuccess && (
           <div className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-600">
-            Data stok opname berhasil disimpan.
+            Data stok opname berhasil disimpan. Stok sistem tidak berubah
+            otomatis.
           </div>
         )}
       </div>

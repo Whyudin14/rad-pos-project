@@ -75,7 +75,13 @@ function StockOpname() {
     },
   ]
 
-  const opnameHistoryFilters = ["Semua", "Sesuai", "Lebih", "Kurang"]
+  const opnameHistoryFilters = [
+    "Semua",
+    "Sesuai",
+    "Stok Bermasalah",
+    "Lebih",
+    "Kurang",
+  ]
 
   const opnameHistorySessionFilters = [
     "Semua Sesi",
@@ -217,6 +223,14 @@ function StockOpname() {
     return numericDifference
   }
 
+  const isStockProblem = (item) => {
+    return (
+      item.status === "Lebih" ||
+      item.status === "Kurang" ||
+      item.investigationStatus === "pending"
+    )
+  }
+
   const getSelectedSessionTypeData = () => {
     return stockOpnameTypes.find((item) => item.type === selectedSessionType)
   }
@@ -266,7 +280,8 @@ function StockOpname() {
   }, 0)
 
   const sessionProductsCount = activeStockOpnameSession
-    ? productList.filter((product) => isProductMatchActiveSession(product)).length
+    ? productList.filter((product) => isProductMatchActiveSession(product))
+        .length
     : 0
 
   const filteredProducts = productList.filter((product) => {
@@ -326,7 +341,9 @@ function StockOpname() {
     const keyword = opnameHistorySearch.toLowerCase()
 
     const matchStatus =
-      opnameHistoryFilter === "Semua" || item.status === opnameHistoryFilter
+      opnameHistoryFilter === "Semua" ||
+      item.status === opnameHistoryFilter ||
+      (opnameHistoryFilter === "Stok Bermasalah" && isStockProblem(item))
 
     const matchSession =
       opnameHistorySessionFilter === "Semua Sesi" ||
@@ -346,7 +363,9 @@ function StockOpname() {
       item.status?.toLowerCase().includes(keyword) ||
       item.sessionName?.toLowerCase().includes(keyword) ||
       item.sessionType?.toLowerCase().includes(keyword) ||
-      item.sessionScheduleDay?.toLowerCase().includes(keyword)
+      item.sessionScheduleDay?.toLowerCase().includes(keyword) ||
+      item.investigationStatus?.toLowerCase().includes(keyword) ||
+      item.investigationNote?.toLowerCase().includes(keyword)
 
     return matchStatus && matchSession && matchSearch
   })
@@ -500,6 +519,7 @@ function StockOpname() {
 
     const systemStock = Number(selectedEditOpname.systemStock || 0)
     const difference = numericPhysicalStock - systemStock
+    const hasDifference = difference !== 0
 
     const updatedHistory = stockOpnameHistory.map((item) => {
       if (item.id !== selectedEditOpname.id) return item
@@ -511,6 +531,12 @@ function StockOpname() {
         note: editOpnameNote,
         status:
           difference === 0 ? "Sesuai" : difference > 0 ? "Lebih" : "Kurang",
+        investigationStatus: hasDifference ? "pending" : "clear",
+        investigationNote: hasDifference ? editOpnameNote : "",
+        correctionApplied: item.correctionApplied || false,
+        correctionAppliedAt: item.correctionAppliedAt || null,
+        correctionAppliedBy: item.correctionAppliedBy || null,
+        correctionMutationId: item.correctionMutationId || null,
         updatedAt: new Date().toISOString(),
       }
     })
@@ -542,8 +568,9 @@ function StockOpname() {
 
     if (physicalStock === "" || Number.isNaN(numericPhysicalStock)) return
 
-    const difference =
-      numericPhysicalStock - Number(selectedStockOpname.systemStock || 0)
+    const systemStock = Number(selectedStockOpname.systemStock || 0)
+    const difference = numericPhysicalStock - systemStock
+    const hasDifference = difference !== 0
 
     const opnameData = {
       id: `SO-${Date.now()}`,
@@ -561,12 +588,19 @@ function StockOpname() {
       variantValue: selectedStockOpname.variantValue,
       sku: selectedStockOpname.sku,
       barcode: selectedStockOpname.barcode,
-      systemStock: Number(selectedStockOpname.systemStock || 0),
+      systemStock,
       physicalStock: numericPhysicalStock,
       difference,
       note: opnameNote,
       status:
         difference === 0 ? "Sesuai" : difference > 0 ? "Lebih" : "Kurang",
+
+      investigationStatus: hasDifference ? "pending" : "clear",
+      investigationNote: hasDifference ? opnameNote : "",
+      correctionApplied: false,
+      correctionAppliedAt: null,
+      correctionAppliedBy: null,
+      correctionMutationId: null,
     }
 
     const existingHistory = JSON.parse(
