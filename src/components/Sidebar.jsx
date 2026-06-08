@@ -36,7 +36,7 @@ const mainMenuSections = [
       },
       {
         name: "Insight Produk",
-        icon: "📈",
+        icon: "💡",
         path: "/insight-produk",
       },
       {

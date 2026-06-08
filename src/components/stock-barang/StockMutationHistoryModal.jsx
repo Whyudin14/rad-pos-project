@@ -17,33 +17,112 @@ function StockMutationHistoryModal({
   setMutationSearch,
   formatDateTime,
   formatDifference,
+  getMutationTypeLabel,
+  getMutationSourceLabel,
   onClose,
 }) {
-  const totalSale = stockMutations.filter((item) => item.type === "SALE").length
-  const totalVoidRestore = stockMutations.filter((item) => {
-    return item.type === "VOID_RESTORE"
-  }).length
-
-  const mutationTypeFilters = [
-    { label: "Semua", value: "Semua" },
-    { label: "Penjualan", value: "SALE" },
-    { label: "Void", value: "VOID_RESTORE" },
-  ]
-
-  const getMutationTypeLabel = (type) => {
-    if (type === "SALE") return "Penjualan"
-    if (type === "VOID_RESTORE") return "Void Restore"
+  const normalizeType = (type) => {
+    if (type === "SALE") return "out"
+    if (type === "VOID_RESTORE") return "in"
 
     return type || "-"
   }
 
+  const normalizeSource = (source, type) => {
+    if (source === "Transaksi POS") return "pos"
+    if (source === "Void Transaksi") return "void"
+    if (type === "SALE") return "pos"
+    if (type === "VOID_RESTORE") return "void"
+
+    return source || "-"
+  }
+
+  const getTypeLabel = (type) => {
+    if (getMutationTypeLabel) {
+      return getMutationTypeLabel(normalizeType(type))
+    }
+
+    const labels = {
+      out: "Stok Keluar",
+      in: "Stok Masuk",
+      adjustment: "Koreksi",
+      SALE: "Stok Keluar",
+      VOID_RESTORE: "Stok Masuk",
+    }
+
+    return labels[type] || type || "-"
+  }
+
+  const getSourceLabel = (source, type) => {
+    const normalizedSource = normalizeSource(source, type)
+
+    if (getMutationSourceLabel) {
+      return getMutationSourceLabel(normalizedSource)
+    }
+
+    const labels = {
+      pos: "Transaksi POS",
+      void: "Void Transaksi",
+      manual: "Manual",
+      stock_opname: "Stock Opname",
+      product_create: "Tambah Produk",
+    }
+
+    return labels[normalizedSource] || normalizedSource || "-"
+  }
+
+  const getMutationDate = (item) => {
+    return item.createdAt || item.date || "-"
+  }
+
+  const getVariantLabel = (item) => {
+    return item.variantLabel || item.variantValue || item.ukuran || item.size || "-"
+  }
+
+  const getQtyBefore = (item) => {
+    return item.qtyBefore ?? item.stockBefore ?? 0
+  }
+
+  const getQtyAfter = (item) => {
+    return item.qtyAfter ?? item.stockAfter ?? 0
+  }
+
+  const getReference = (item) => {
+    return item.referenceId || item.invoiceNumber || item.reference || "-"
+  }
+
+  const totalStockOut = stockMutations.filter((item) => {
+    return normalizeType(item.type) === "out"
+  }).length
+
+  const totalStockIn = stockMutations.filter((item) => {
+    return normalizeType(item.type) === "in"
+  }).length
+
+  const totalAdjustment = stockMutations.filter((item) => {
+    return normalizeType(item.type) === "adjustment"
+  }).length
+
+  const mutationTypeFilters = [
+    { label: "Semua", value: "Semua" },
+    { label: "Stok Keluar", value: "out" },
+    { label: "Stok Masuk", value: "in" },
+    { label: "Koreksi", value: "adjustment" },
+  ]
+
   const getMutationTypeClass = (type) => {
-    if (type === "SALE") {
+    const normalizedType = normalizeType(type)
+
+    if (normalizedType === "out") {
       return "border-red-100 bg-red-50 text-red-600"
     }
 
-    if (type === "VOID_RESTORE") {
+    if (normalizedType === "in") {
       return "border-emerald-100 bg-emerald-50 text-emerald-600"
+    }
+
+    if (normalizedType === "adjustment") {
+      return "border-amber-100 bg-amber-50 text-amber-600"
     }
 
     return "border-slate-200 bg-slate-50 text-slate-500"
@@ -58,6 +137,12 @@ function StockMutationHistoryModal({
     return "text-slate-500"
   }
 
+  const displayedMutations = filteredStockMutations.filter((item) => {
+    if (mutationTypeFilter === "Semua") return true
+
+    return normalizeType(item.type) === mutationTypeFilter
+  })
+
   return (
     <ModalWrapper maxWidth="max-w-7xl" tall>
       <ModalHeader
@@ -69,21 +154,30 @@ function StockMutationHistoryModal({
       />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 py-4 sm:px-6">
-        <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <MiniSummary
             label="Total Mutasi"
             value={stockMutations.length}
             color="slate"
           />
-          <MiniSummary label="Penjualan" value={totalSale} color="red" />
+
+          <MiniSummary label="Stok Keluar" value={totalStockOut} color="red" />
+
           <MiniSummary
-            label="Void Restore"
-            value={totalVoidRestore}
+            label="Stok Masuk"
+            value={totalStockIn}
             color="emerald"
           />
+
+          <MiniSummary
+            label="Koreksi"
+            value={totalAdjustment}
+            color="amber"
+          />
+
           <MiniSummary
             label="Ditampilkan"
-            value={filteredStockMutations.length}
+            value={displayedMutations.length}
             color="blue"
           />
         </div>
@@ -102,6 +196,7 @@ function StockMutationHistoryModal({
                   return (
                     <button
                       key={filter.value}
+                      type="button"
                       onClick={() => setMutationTypeFilter(filter.value)}
                       className={`rounded-xl px-3 py-2 text-xs font-black transition ${
                         isActive
@@ -123,7 +218,7 @@ function StockMutationHistoryModal({
                 </p>
 
                 <p className="hidden text-xs font-bold text-emerald-600 sm:block">
-                  {filteredStockMutations.length} dari {stockMutations.length} item
+                  {displayedMutations.length} dari {stockMutations.length} item
                 </p>
               </div>
 
@@ -136,7 +231,7 @@ function StockMutationHistoryModal({
               />
 
               <p className="mt-2 text-xs font-bold text-emerald-600 sm:hidden">
-                {filteredStockMutations.length} dari {stockMutations.length} mutasi ditampilkan.
+                {displayedMutations.length} dari {stockMutations.length} mutasi ditampilkan.
               </p>
             </div>
           </div>
@@ -145,11 +240,11 @@ function StockMutationHistoryModal({
         <div className="min-h-0 flex-1">
           {stockMutations.length === 0 ? (
             <EmptyModalState text="Belum ada riwayat mutasi stok" />
-          ) : filteredStockMutations.length === 0 ? (
+          ) : displayedMutations.length === 0 ? (
             <EmptyModalState text="Mutasi stok tidak ditemukan" />
           ) : (
             <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="min-w-[1080px]">
+              <div className="min-w-[1120px]">
                 <div className="sticky top-0 z-10 hidden grid-cols-[0.85fr_0.75fr_1.55fr_0.45fr_0.55fr_0.55fr_0.55fr_0.9fr_1fr] gap-3 border-b border-slate-100 bg-slate-50/95 px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-400 backdrop-blur xl:grid">
                   <span>Tanggal</span>
                   <span>Tipe</span>
@@ -163,7 +258,13 @@ function StockMutationHistoryModal({
                 </div>
 
                 <div className="divide-y divide-slate-100">
-                  {filteredStockMutations.map((item) => {
+                  {displayedMutations.map((item) => {
+                    const normalizedType = normalizeType(item.type)
+                    const normalizedSource = normalizeSource(
+                      item.source,
+                      item.type
+                    )
+
                     return (
                       <div
                         key={item.id}
@@ -171,17 +272,17 @@ function StockMutationHistoryModal({
                       >
                         <MutationCell label="Tanggal">
                           <p className="text-xs font-bold leading-relaxed text-slate-500">
-                            {formatDateTime(item.date)}
+                            {formatDateTime(getMutationDate(item))}
                           </p>
                         </MutationCell>
 
                         <MutationCell label="Tipe">
                           <span
                             className={`inline-flex rounded-full border px-2 py-1 text-xs font-black ${getMutationTypeClass(
-                              item.type
+                              normalizedType
                             )}`}
                           >
-                            {getMutationTypeLabel(item.type)}
+                            {getTypeLabel(normalizedType)}
                           </span>
                         </MutationCell>
 
@@ -202,6 +303,12 @@ function StockMutationHistoryModal({
                               Brand: {item.brand || "-"}
                             </span>
 
+                            {item.category && (
+                              <span className="truncate">
+                                Kategori: {item.category}
+                              </span>
+                            )}
+
                             <span className="truncate">
                               SKU: {item.sku || "-"}
                             </span>
@@ -210,7 +317,7 @@ function StockMutationHistoryModal({
 
                         <MutationCell label="Ukuran">
                           <p className="font-black text-slate-900">
-                            {item.variantValue || "-"}
+                            {getVariantLabel(item)}
                           </p>
                         </MutationCell>
 
@@ -221,12 +328,12 @@ function StockMutationHistoryModal({
                         </MutationCell>
 
                         <MutationCell label="Stok Sebelum">
-                          <p>{item.stockBefore ?? 0}</p>
+                          <p>{getQtyBefore(item)}</p>
                         </MutationCell>
 
                         <MutationCell label="Stok Sesudah">
                           <p className="font-black text-slate-900">
-                            {item.stockAfter ?? 0}
+                            {getQtyAfter(item)}
                           </p>
                         </MutationCell>
 
@@ -236,11 +343,11 @@ function StockMutationHistoryModal({
                           </p>
 
                           <p className="truncate text-xs font-black text-slate-700">
-                            {item.source || "-"}
+                            {getSourceLabel(normalizedSource, normalizedType)}
                           </p>
 
                           <p className="mt-0.5 truncate text-xs font-bold text-blue-600">
-                            {item.invoiceNumber || item.reference || "-"}
+                            {getReference(item)}
                           </p>
                         </div>
 

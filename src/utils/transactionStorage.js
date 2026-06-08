@@ -1,6 +1,7 @@
+import { saveBulkStockMutations } from "./stockMutationStorage"
+
 const TRANSACTION_KEY = "radSportTransactions"
 const PRODUCT_KEY = "radProducts"
-const STOCK_MUTATION_KEY = "radStockMutations"
 
 export const getTransactions = () => {
   try {
@@ -22,44 +23,6 @@ export const setTransactions = (transactions) => {
   }
 }
 
-export const getStockMutations = () => {
-  try {
-    const data = localStorage.getItem(STOCK_MUTATION_KEY)
-    return data ? JSON.parse(data) : []
-  } catch (error) {
-    console.error("Gagal membaca mutasi stok:", error)
-    return []
-  }
-}
-
-export const setStockMutations = (mutations) => {
-  try {
-    localStorage.setItem(STOCK_MUTATION_KEY, JSON.stringify(mutations))
-    return mutations
-  } catch (error) {
-    console.error("Gagal menyimpan mutasi stok:", error)
-    return []
-  }
-}
-
-const addStockMutations = (newMutations = []) => {
-  try {
-    if (!Array.isArray(newMutations) || newMutations.length === 0) {
-      return getStockMutations()
-    }
-
-    const mutations = getStockMutations()
-    const updatedMutations = [...newMutations, ...mutations]
-
-    localStorage.setItem(STOCK_MUTATION_KEY, JSON.stringify(updatedMutations))
-
-    return updatedMutations
-  } catch (error) {
-    console.error("Gagal menambah mutasi stok:", error)
-    return getStockMutations()
-  }
-}
-
 const getProducts = () => {
   try {
     const data = localStorage.getItem(PRODUCT_KEY)
@@ -78,6 +41,21 @@ const saveProducts = (products) => {
     console.error("Gagal menyimpan produk:", error)
     return []
   }
+}
+
+const safeNumber = (value) => {
+  if (typeof value === "number") return value
+
+  if (typeof value === "string") {
+    const cleanedValue = value.replace(/[^\d.-]/g, "")
+    return Number(cleanedValue || 0)
+  }
+
+  return Number(value || 0)
+}
+
+const getItemQty = (item) => {
+  return safeNumber(item.qty || item.quantity || 0)
 }
 
 const getItemVariantValue = (item) => {
@@ -106,27 +84,35 @@ const isSameVariant = (item, product, variant) => {
   )
 }
 
-const createMutationId = () => {
-  return `MUT-${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
-
 const getTransactionReference = (transaction) => {
   return transaction.invoiceNumber || transaction.id || "-"
 }
 
-const createStockMutation = ({
-  type,
-  transaction,
-  product,
-  variant,
-  item,
-  qtyChange,
-  stockBefore,
-  stockAfter,
-  note = "",
-}) => {
-  const now = new Date().toISOString()
-  const variantValue =
+const getProductName = (product, item) => {
+  return product.name || product.productName || item.productName || item.name || "-"
+}
+
+const getProductBrand = (product, item) => {
+  return product.brand || product.merk || item.brand || item.merk || "-"
+}
+
+const getProductCategory = (product, item) => {
+  return (
+    product.category ||
+    product.kategori ||
+    product.categoryName ||
+    item.category ||
+    item.kategori ||
+    "-"
+  )
+}
+
+const getProductSku = (product, variant, item) => {
+  return variant.sku || item.sku || product.sku || "-"
+}
+
+const getVariantLabel = (variant, item) => {
+  return (
     variant.value ||
     variant.ukuran ||
     variant.size ||
@@ -134,37 +120,37 @@ const createStockMutation = ({
     item.ukuran ||
     item.size ||
     "-"
+  )
+}
 
+const createMutationPayload = ({
+  type,
+  source,
+  transaction,
+  product,
+  variant,
+  item,
+  qtyBefore,
+  qtyChange,
+  qtyAfter,
+  note = "",
+}) => {
   return {
-    id: createMutationId(),
-    date: now,
+    productId: product.id || product.productId || item.productId || "-",
+    productName: getProductName(product, item),
+    brand: getProductBrand(product, item),
+    category: getProductCategory(product, item),
+    sku: getProductSku(product, variant, item),
+    variantId: variant.id || variant.variantId || item.variantId || "-",
+    variantLabel: getVariantLabel(variant, item),
     type,
-    source: type === "SALE" ? "Transaksi POS" : "Void Transaksi",
-    sourceId: transaction.id || "",
-    invoiceNumber: transaction.invoiceNumber || "",
-    reference: getTransactionReference(transaction),
-
-    productId: product.id || product.productId || item.productId || "",
-    productName: product.name || item.productName || item.name || "-",
-    brand: product.brand || item.brand || "-",
-
-    variantId: variant.id || variant.variantId || item.variantId || "",
-    variantValue,
-    sku: variant.sku || item.sku || product.sku || "-",
-    rackLocation:
-      variant.rackLocation ||
-      variant.rak ||
-      item.rackLocation ||
-      product.rackLocation ||
-      "-",
-
-    qty: Math.abs(Number(qtyChange || 0)),
-    qtyChange: Number(qtyChange || 0),
-    stockBefore: Number(stockBefore || 0),
-    stockAfter: Number(stockAfter || 0),
-
+    source,
+    qtyBefore,
+    qtyChange,
+    qtyAfter,
+    referenceId: getTransactionReference(transaction),
+    referenceType: "transaction",
     note,
-    createdAt: now,
   }
 }
 
@@ -183,7 +169,7 @@ export const reduceStockFromTransaction = (transaction) => {
     }
 
     const products = getProducts()
-    const stockMutations = []
+    const stockMutationPayloads = []
 
     const reducedProducts = products.map((product) => {
       const matchedItems = transaction.items.filter((item) => {
@@ -200,22 +186,23 @@ export const reduceStockFromTransaction = (transaction) => {
 
             if (!matchedItem) return variant
 
-            const currentStock = Number(variant.stock || variant.stok || 0)
-            const soldQty = Number(matchedItem.qty || 0)
+            const currentStock = safeNumber(variant.stock || variant.stok || 0)
+            const soldQty = getItemQty(matchedItem)
             const newStock = Math.max(currentStock - soldQty, 0)
 
             if (soldQty > 0) {
-              stockMutations.push(
-                createStockMutation({
-                  type: "SALE",
+              stockMutationPayloads.push(
+                createMutationPayload({
+                  type: "out",
+                  source: "pos",
                   transaction,
                   product,
                   variant,
                   item: matchedItem,
+                  qtyBefore: currentStock,
                   qtyChange: -soldQty,
-                  stockBefore: currentStock,
-                  stockAfter: newStock,
-                  note: `Stok berkurang karena transaksi ${getTransactionReference(
+                  qtyAfter: newStock,
+                  note: `Stok keluar dari transaksi ${getTransactionReference(
                     transaction
                   )}`,
                 })
@@ -230,7 +217,7 @@ export const reduceStockFromTransaction = (transaction) => {
         : []
 
       const totalStock = updatedVariants.reduce((sum, variant) => {
-        return sum + Number(variant.stock || variant.stok || 0)
+        return sum + safeNumber(variant.stock || variant.stok || 0)
       }, 0)
 
       return {
@@ -242,7 +229,7 @@ export const reduceStockFromTransaction = (transaction) => {
     })
 
     saveProducts(reducedProducts)
-    addStockMutations(stockMutations)
+    saveBulkStockMutations(stockMutationPayloads)
 
     return reducedProducts
   } catch (error) {
@@ -258,7 +245,7 @@ export const restoreStockFromTransaction = (transaction) => {
     }
 
     const products = getProducts()
-    const stockMutations = []
+    const stockMutationPayloads = []
 
     const restoredProducts = products.map((product) => {
       const matchedItems = transaction.items.filter((item) => {
@@ -275,22 +262,23 @@ export const restoreStockFromTransaction = (transaction) => {
 
             if (!matchedItem) return variant
 
-            const currentStock = Number(variant.stock || variant.stok || 0)
-            const restoreQty = Number(matchedItem.qty || 0)
+            const currentStock = safeNumber(variant.stock || variant.stok || 0)
+            const restoreQty = getItemQty(matchedItem)
             const newStock = currentStock + restoreQty
 
             if (restoreQty > 0) {
-              stockMutations.push(
-                createStockMutation({
-                  type: "VOID_RESTORE",
+              stockMutationPayloads.push(
+                createMutationPayload({
+                  type: "in",
+                  source: "void",
                   transaction,
                   product,
                   variant,
                   item: matchedItem,
+                  qtyBefore: currentStock,
                   qtyChange: restoreQty,
-                  stockBefore: currentStock,
-                  stockAfter: newStock,
-                  note: `Stok dikembalikan karena void transaksi ${getTransactionReference(
+                  qtyAfter: newStock,
+                  note: `Stok masuk kembali dari void transaksi ${getTransactionReference(
                     transaction
                   )}`,
                 })
@@ -305,7 +293,7 @@ export const restoreStockFromTransaction = (transaction) => {
         : []
 
       const totalStock = updatedVariants.reduce((sum, variant) => {
-        return sum + Number(variant.stock || variant.stok || 0)
+        return sum + safeNumber(variant.stock || variant.stok || 0)
       }, 0)
 
       return {
@@ -317,7 +305,7 @@ export const restoreStockFromTransaction = (transaction) => {
     })
 
     saveProducts(restoredProducts)
-    addStockMutations(stockMutations)
+    saveBulkStockMutations(stockMutationPayloads)
 
     return restoredProducts
   } catch (error) {
@@ -328,13 +316,15 @@ export const restoreStockFromTransaction = (transaction) => {
 
 export const saveTransaction = (transaction) => {
   try {
+    const stockReducedAt = new Date().toISOString()
+
+    reduceStockFromTransaction(transaction)
+
     const transactionWithStockInfo = {
       ...transaction,
       stockReduced: true,
-      stockReducedAt: new Date().toISOString(),
+      stockReducedAt,
     }
-
-    reduceStockFromTransaction(transaction)
 
     const transactions = getTransactions()
     const updatedTransactions = [transactionWithStockInfo, ...transactions]
@@ -417,6 +407,8 @@ export const voidTransaction = ({
       return transactions
     }
 
+    const stockRestoredAt = restoreStock ? new Date().toISOString() : null
+
     if (restoreStock) {
       restoreStockFromTransaction(targetTransaction)
     }
@@ -435,7 +427,7 @@ export const voidTransaction = ({
         voidedAt: new Date().toISOString(),
         voidedBy,
         stockRestored: restoreStock,
-        stockRestoredAt: restoreStock ? new Date().toISOString() : null,
+        stockRestoredAt,
         updatedAt: new Date().toISOString(),
         items: transaction.items?.map((item) => ({
           ...item,

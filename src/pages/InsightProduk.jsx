@@ -78,17 +78,6 @@ const getTransactionDate = (transaction) => {
   )
 }
 
-const getTransactionTotal = (transaction) => {
-  return safeNumber(
-    transaction.grandTotal ||
-      transaction.finalTotal ||
-      transaction.total ||
-      transaction.totalAmount ||
-      transaction.subtotal ||
-      0
-  )
-}
-
 const getItemQty = (item) => {
   return safeNumber(item.qty || item.quantity || 0)
 }
@@ -287,15 +276,25 @@ const getAgeStatusLabel = (status) => {
   const labels = {
     accurate: "Akurat",
     estimated: "Estimasi",
-    unknown: "Tidak diketahui",
+    unknown: "Belum diketahui",
   }
 
-  return labels[status] || "Tidak diketahui"
+  return labels[status] || "Belum diketahui"
+}
+
+const getAgeStatusClass = (status) => {
+  const classes = {
+    accurate: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    estimated: "bg-amber-50 text-amber-700 border-amber-100",
+    unknown: "bg-slate-100 text-slate-500 border-slate-200",
+  }
+
+  return classes[status] || classes.unknown
 }
 
 const getAgeDisplay = (row) => {
   if (row.ageStatus === "unknown" || row.ageDays === null) {
-    return "Tidak diketahui"
+    return "Belum diketahui"
   }
 
   if (row.ageStatus === "estimated") {
@@ -325,6 +324,18 @@ const getProductBrand = (product) => {
 
 const getProductCategory = (product) => {
   return product.category || product.kategori || product.categoryName || "-"
+}
+
+const normalizeFilterValue = (value) => {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+}
+
+const getUniqueOptions = (rows, key) => {
+  return [...new Set(rows.map((row) => row[key]).filter(Boolean))]
+    .filter((value) => value !== "-")
+    .sort((a, b) => String(a).localeCompare(String(b)))
 }
 
 const buildSalesMap = (transactions) => {
@@ -433,24 +444,102 @@ const getProductInsightRows = (products, salesMap) => {
     })
 }
 
+function GuideCard({ title, description, icon }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="text-xl">{icon}</span>
+        <h4 className="font-bold text-slate-800">{title}</h4>
+      </div>
+      <p className="text-sm leading-relaxed text-slate-500">{description}</p>
+    </div>
+  )
+}
+
+function InsightGuide() {
+  return (
+    <section className="mb-6 rounded-3xl border border-blue-100 bg-blue-50/60 p-5">
+      <div className="mb-4 flex flex-col gap-1">
+        <p className="text-sm font-semibold text-blue-600">
+          Panduan Membaca Insight
+        </p>
+        <h3 className="text-lg font-bold text-slate-900">
+          Arti data performa barang
+        </h3>
+        <p className="text-sm text-slate-500">
+          Bagian ini membantu owner dan staff memahami data stok tanpa perlu
+          menebak-nebak arti setiap tabel.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <GuideCard
+          icon="🔥"
+          title="Barang Paling Laku"
+          description="Produk dengan qty terjual paling banyak pada periode dan filter yang dipilih. Cocok untuk bahan keputusan restock."
+        />
+
+        <GuideCard
+          icon="🐢"
+          title="Slow Moving"
+          description="Produk yang masih punya stok dan sudah ada penjualan, tapi pergerakannya rendah. Cocok untuk dipantau, dipromosikan, atau dipindah display."
+        />
+
+        <GuideCard
+          icon="🧊"
+          title="Dead Stock"
+          description="Produk yang masih punya stok, tapi belum terjual pada periode yang dipilih. Cocok untuk evaluasi promo, bundling, atau clearance."
+        />
+
+        <GuideCard
+          icon="⏳"
+          title="Umur Barang"
+          description="Lama barang berada di toko sejak tanggal masuk stok. Data dihitung dari stockInDate, bukan dari tanggal produk dibuat di sistem."
+        />
+
+        <GuideCard
+          icon="❔"
+          title="Umur Belum Diketahui"
+          description="Produk yang belum punya tanggal masuk stok. Biasanya terjadi pada barang lama yang baru dimasukkan ke sistem."
+        />
+
+        <GuideCard
+          icon="✅"
+          title="Status Umur"
+          description="Akurat berarti tanggal masuk pasti, Estimasi berarti perkiraan, dan Belum diketahui berarti tanggal masuk belum diisi."
+        />
+      </div>
+    </section>
+  )
+}
+
 function InsightTable({
   title,
   description,
+  definition,
   rows = [],
   canViewFinance = true,
   emptyText = "Belum ada data",
 }) {
   return (
-    <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-      <div className="mb-5">
-        <h3 className="text-lg font-bold text-slate-900">{title}</h3>
-        <p className="text-sm text-slate-400 mt-1">{description}</p>
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+          <p className="mt-1 text-sm text-slate-400">{description}</p>
+        </div>
+
+        {definition && (
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700 xl:max-w-md">
+            {definition}
+          </div>
+        )}
       </div>
 
       {rows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
           <p className="font-semibold text-slate-700">{emptyText}</p>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="mt-1 text-sm text-slate-400">
             Data akan muncul setelah ada transaksi dan data produk.
           </p>
         </div>
@@ -458,13 +547,13 @@ function InsightTable({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm">
             <thead>
-              <tr className="text-left text-slate-400 border-b border-slate-100">
+              <tr className="border-b border-slate-100 text-left text-slate-400">
                 <th className="pb-3 font-medium">Produk</th>
-                <th className="pb-3 font-medium text-center">Stok</th>
-                <th className="pb-3 font-medium text-center">Terjual</th>
-                <th className="pb-3 font-medium text-center">Umur Barang</th>
+                <th className="pb-3 text-center font-medium">Stok</th>
+                <th className="pb-3 text-center font-medium">Terjual</th>
+                <th className="pb-3 text-center font-medium">Umur Barang</th>
                 <th className="pb-3 font-medium">Terakhir Laku</th>
-                <th className="pb-3 font-medium text-right">Omzet</th>
+                <th className="pb-3 text-right font-medium">Omzet</th>
               </tr>
             </thead>
 
@@ -472,7 +561,7 @@ function InsightTable({
               {rows.map((row) => (
                 <tr
                   key={`${row.productId}-${row.productName}`}
-                  className="border-b border-slate-100 last:border-0 align-top"
+                  className="border-b border-slate-100 align-top last:border-0"
                 >
                   <td className="py-4 pr-5">
                     <div className="max-w-md">
@@ -514,7 +603,11 @@ function InsightTable({
                     <div className="font-bold text-slate-700">
                       {getAgeDisplay(row)}
                     </div>
-                    <div className="mt-1 text-[11px] font-semibold text-slate-400">
+                    <div
+                      className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${getAgeStatusClass(
+                        row.ageStatus
+                      )}`}
+                    >
                       {row.ageStatusLabel}
                     </div>
                   </td>
@@ -546,6 +639,8 @@ function InsightProduk() {
   const [customStartDate, setCustomStartDate] = useState("")
   const [customEndDate, setCustomEndDate] = useState("")
   const [searchKeyword, setSearchKeyword] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("all")
+  const [selectedBrand, setSelectedBrand] = useState("all")
 
   const currentUserRole = getCurrentUserRole()
   const currentUserRoleLabel = getCurrentUserRoleLabel(currentUserRole)
@@ -572,19 +667,37 @@ function InsightProduk() {
     const salesMap = buildSalesMap(validTransactions)
     const productRows = getProductInsightRows(products, salesMap)
 
+    const categoryOptions = getUniqueOptions(productRows, "category")
+    const brandOptions = getUniqueOptions(productRows, "brand")
+
     const keyword = searchKeyword.toLowerCase().trim()
+    const normalizedCategory = normalizeFilterValue(selectedCategory)
+    const normalizedBrand = normalizeFilterValue(selectedBrand)
 
     const filteredRows = productRows.filter((row) => {
-      if (!keyword) return true
+      const matchesKeyword =
+        !keyword ||
+        `${row.productName} ${row.brand} ${row.category}`
+          .toLowerCase()
+          .includes(keyword)
 
-      return `${row.productName} ${row.brand} ${row.category}`
-        .toLowerCase()
-        .includes(keyword)
+      const matchesCategory =
+        normalizedCategory === "all" ||
+        normalizeFilterValue(row.category) === normalizedCategory
+
+      const matchesBrand =
+        normalizedBrand === "all" ||
+        normalizeFilterValue(row.brand) === normalizedBrand
+
+      return matchesKeyword && matchesCategory && matchesBrand
     })
 
     const topSellingProducts = [...filteredRows]
       .filter((row) => row.qtySold > 0)
-      .sort((a, b) => b.qtySold - a.qtySold)
+      .sort((a, b) => {
+        if (a.qtySold !== b.qtySold) return b.qtySold - a.qtySold
+        return b.revenue - a.revenue
+      })
       .slice(0, 10)
 
     const slowMovingProducts = [...filteredRows]
@@ -634,6 +747,8 @@ function InsightProduk() {
 
     return {
       rows: filteredRows,
+      categoryOptions,
+      brandOptions,
       topSellingProducts,
       slowMovingProducts,
       deadStockProducts,
@@ -651,6 +766,8 @@ function InsightProduk() {
     customStartDate,
     customEndDate,
     searchKeyword,
+    selectedCategory,
+    selectedBrand,
   ])
 
   const reportLabel = getReportLabel({
@@ -662,28 +779,37 @@ function InsightProduk() {
     customEndDate,
   })
 
+  const activeFilterLabel = [
+    selectedCategory !== "all" ? selectedCategory : "",
+    selectedBrand !== "all" ? selectedBrand : "",
+  ]
+    .filter(Boolean)
+    .join(" • ")
+
   return (
     <MainLayout>
-      <header className="flex flex-col gap-5 mb-8 xl:flex-row xl:items-center xl:justify-between">
+      <header className="mb-8 flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <p className="text-sm font-medium text-blue-600 mb-1">
+          <p className="mb-1 text-sm font-medium text-blue-600">
             Insight Produk
           </p>
           <h2 className="text-3xl font-bold text-slate-900">
             Performa Barang
           </h2>
-          <p className="text-slate-500 mt-1">
+          <p className="mt-1 text-slate-500">
             Baca barang paling laku, slow moving, dead stock, dan umur barang.
           </p>
         </div>
 
-        <div className="bg-white px-5 py-3 rounded-2xl shadow-sm border border-slate-200">
+        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
           <p className="text-xs text-slate-400">Role Aktif</p>
-          <p className="font-semibold text-sm">{currentUserRoleLabel}</p>
+          <p className="text-sm font-semibold">{currentUserRoleLabel}</p>
         </div>
       </header>
 
-      <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 mb-6">
+      <InsightGuide />
+
+      <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_auto] xl:items-start">
           <div>
             <label className="text-xs font-semibold text-slate-500">
@@ -839,9 +965,74 @@ function InsightProduk() {
             </div>
           )}
         </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-4 border-t border-slate-100 pt-5 md:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-500">
+              Filter Kategori
+            </label>
+            <select
+              value={selectedCategory}
+              onChange={(event) => setSelectedCategory(event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500"
+            >
+              <option value="all">Semua Kategori</option>
+              {insightData.categoryOptions.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-500">
+              Filter Brand
+            </label>
+            <select
+              value={selectedBrand}
+              onChange={(event) => setSelectedBrand(event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500"
+            >
+              <option value="all">Semua Brand</option>
+              {insightData.brandOptions.map((brand) => (
+                <option key={brand} value={brand}>
+                  {brand}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="text-xs font-semibold text-slate-500">
+              Filter Aktif
+            </label>
+            <div className="mt-2 flex min-h-[46px] flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
+              <span>{reportLabel}</span>
+              {activeFilterLabel && (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <span>{activeFilterLabel}</span>
+                </>
+              )}
+              {!searchKeyword && !activeFilterLabel && (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <span>Semua produk aktif</span>
+                </>
+              )}
+              {searchKeyword && (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <span>Pencarian: “{searchKeyword}”</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-5 mb-8 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Total Item Terjual"
           value={`${insightData.totalQtySold} Item`}
@@ -852,7 +1043,7 @@ function InsightProduk() {
         <StatCard
           title="Produk Aktif Terbaca"
           value={insightData.activeProductCount}
-          note="Produk aktif dari data barang"
+          note="Mengikuti filter aktif"
           icon="📦"
         />
 
@@ -888,7 +1079,7 @@ function InsightProduk() {
               <h3 className="font-bold text-amber-900">
                 Akses nominal produk dibatasi
               </h3>
-              <p className="text-sm text-amber-700 mt-1">
+              <p className="mt-1 text-sm text-amber-700">
                 Role {currentUserRoleLabel} bisa melihat performa barang secara
                 operasional seperti qty terjual, stok, dan umur barang. Nominal
                 omzet produk hanya untuk owner/admin.
@@ -902,6 +1093,7 @@ function InsightProduk() {
         <InsightTable
           title="Barang Paling Laku"
           description={`Top produk berdasarkan qty terjual pada periode ${reportLabel}.`}
+          definition="Dibaca sebagai produk yang paling cepat bergerak. Semakin tinggi qty terjual, semakin layak dipertimbangkan untuk restock."
           rows={insightData.topSellingProducts}
           canViewFinance={userCanViewFinance}
           emptyText="Belum ada produk terjual di periode ini"
@@ -910,6 +1102,7 @@ function InsightProduk() {
         <InsightTable
           title="Slow Moving"
           description="Produk yang masih punya stok, sudah terjual, tapi pergerakannya rendah."
+          definition="Dibaca sebagai barang yang masih bergerak, tapi lambat. Cocok untuk dipantau sebelum menjadi dead stock."
           rows={insightData.slowMovingProducts}
           canViewFinance={userCanViewFinance}
           emptyText="Belum ada produk slow moving"
@@ -918,6 +1111,7 @@ function InsightProduk() {
         <InsightTable
           title="Dead Stock"
           description="Produk yang masih punya stok tapi belum terjual di periode terpilih."
+          definition="Dibaca sebagai barang yang belum menghasilkan penjualan pada periode ini. Bisa dipertimbangkan untuk promo, bundling, atau clearance."
           rows={insightData.deadStockProducts}
           canViewFinance={userCanViewFinance}
           emptyText="Tidak ada dead stock di periode ini"
@@ -926,6 +1120,7 @@ function InsightProduk() {
         <InsightTable
           title="Umur Barang"
           description="Semua produk aktif yang masih punya stok, diurutkan dari umur paling lama berdasarkan tanggal masuk barang."
+          definition="Umur barang dihitung dari stockInDate. Barang paling tua muncul di atas supaya lebih mudah dievaluasi."
           rows={insightData.oldestProducts}
           canViewFinance={userCanViewFinance}
           emptyText="Belum ada data umur barang"
@@ -934,6 +1129,7 @@ function InsightProduk() {
         <InsightTable
           title="Umur Belum Diketahui"
           description="Produk aktif yang masih punya stok tapi belum punya tanggal masuk barang. Ini perlu dilengkapi supaya laporan umur barang lebih akurat."
+          definition="Bagian ini penting untuk merapikan data barang lama yang belum diketahui tanggal masuk stoknya."
           rows={insightData.unknownAgeProducts}
           canViewFinance={userCanViewFinance}
           emptyText="Semua produk stok aktif sudah punya data umur barang"
