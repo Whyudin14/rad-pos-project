@@ -8,6 +8,7 @@ import EditStockOpnameModal from "../components/stock-opname/EditStockOpnameModa
 import OpnameHistoryModal from "../components/stock-opname/OpnameHistoryModal"
 import ActiveSessionResultModal from "../components/stock-opname/ActiveSessionResultModal"
 import SessionHistoryModal from "../components/stock-opname/SessionHistoryModal"
+import StockOpnameMatrixModal from "../components/stock-opname/StockOpnameMatrixModal"
 
 function StockOpname() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -40,6 +41,7 @@ function StockOpname() {
 
   const [showSessionHistory, setShowSessionHistory] = useState(false)
   const [showActiveSessionResult, setShowActiveSessionResult] = useState(false)
+  const [showMatrixInput, setShowMatrixInput] = useState(false)
   const [sessionHistoryStatusFilter, setSessionHistoryStatusFilter] =
     useState("Semua")
   const [sessionHistoryTypeFilter, setSessionHistoryTypeFilter] =
@@ -618,6 +620,91 @@ function StockOpname() {
     }, 900)
   }
 
+  const saveMatrixStockOpname = (matrixItems) => {
+    if (!activeStockOpnameSession || !Array.isArray(matrixItems)) return
+
+    const validItems = matrixItems.filter((item) => {
+      const physicalStock = Number(item.physicalStock)
+      return (
+        item.physicalStock !== "" &&
+        !Number.isNaN(physicalStock) &&
+        physicalStock >= 0
+      )
+    })
+
+    if (validItems.length === 0) return
+
+    const now = new Date().toISOString()
+    const existingHistory = JSON.parse(
+      localStorage.getItem("stockOpnameHistory") || "[]"
+    )
+
+    const incomingKeys = new Set(
+      validItems.map((item) =>
+        getOpnameItemKey({
+          productId: item.productId,
+          variantId: item.variantId,
+          variantValue: item.variantValue,
+          sku: item.sku,
+          barcode: item.barcode,
+        })
+      )
+    )
+
+    const historyWithoutUpdatedItems = existingHistory.filter((item) => {
+      if (item.sessionId !== activeStockOpnameSession.id) return true
+      return !incomingKeys.has(getOpnameItemKey(item))
+    })
+
+    const matrixHistory = validItems.map((item, index) => {
+      const systemStock = Number(item.systemStock || 0)
+      const physicalStock = Number(item.physicalStock || 0)
+      const difference = physicalStock - systemStock
+      const hasDifference = difference !== 0
+      const status =
+        difference === 0 ? "Sesuai" : difference > 0 ? "Lebih" : "Kurang"
+
+      return {
+        id: `SO-MATRIX-${Date.now()}-${index}`,
+        date: now,
+        sessionId: activeStockOpnameSession.id,
+        sessionName: activeStockOpnameSession.name,
+        sessionType: activeStockOpnameSession.type,
+        sessionScheduleDay: activeStockOpnameSession.scheduleDay,
+        productId: item.productId,
+        productName: item.productName,
+        brand: item.brand,
+        category: item.category,
+        rackLocation: item.rackLocation,
+        variantId: item.variantId,
+        variantValue: item.variantValue,
+        sku: item.sku,
+        barcode: item.barcode,
+        systemStock,
+        physicalStock,
+        difference,
+        note: item.note || "Input cepat SO / Matrix SO",
+        status,
+        investigationStatus: hasDifference ? "pending" : "clear",
+        investigationNote: hasDifference
+          ? item.note || "Selisih dari Input Cepat SO / Matrix SO"
+          : "",
+        correctionApplied: false,
+        correctionAppliedAt: null,
+        correctionAppliedBy: null,
+        correctionMutationId: null,
+        inputSource: "matrix",
+      }
+    })
+
+    const updatedHistory = [...matrixHistory, ...historyWithoutUpdatedItems]
+
+    localStorage.setItem("stockOpnameHistory", JSON.stringify(updatedHistory))
+    setStockOpnameHistory(updatedHistory)
+    setShowMatrixInput(false)
+    setShowActiveSessionResult(true)
+  }
+
   const deleteStockOpnameHistory = (historyId) => {
     const confirmDelete = window.confirm(
       "Hapus riwayat stok opname ini? Data yang sudah dihapus tidak bisa dikembalikan."
@@ -672,6 +759,15 @@ function StockOpname() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+            {activeStockOpnameSession && (
+              <button
+                onClick={() => setShowMatrixInput(true)}
+                className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
+              >
+                Input Cepat SO
+              </button>
+            )}
+
             <button
               onClick={() => setShowOpnameHistory(true)}
               className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-200"
@@ -705,6 +801,7 @@ function StockOpname() {
           onCreateSession={() => setShowCreateSession(true)}
           onCloseActiveSession={closeActiveStockOpnameSession}
           onOpenActiveSessionResult={() => setShowActiveSessionResult(true)}
+          onOpenMatrixInput={() => setShowMatrixInput(true)}
           onOpenSessionHistory={() => setShowSessionHistory(true)}
         />
 
@@ -895,6 +992,15 @@ function StockOpname() {
             setSessionNote={setSessionNote}
             onClose={() => setShowCreateSession(false)}
             onSubmit={createStockOpnameSession}
+          />
+        )}
+
+        {showMatrixInput && (
+          <StockOpnameMatrixModal
+            activeStockOpnameSession={activeStockOpnameSession}
+            activeSessionProgress={activeSessionProgress}
+            onClose={() => setShowMatrixInput(false)}
+            onSubmit={saveMatrixStockOpname}
           />
         )}
 

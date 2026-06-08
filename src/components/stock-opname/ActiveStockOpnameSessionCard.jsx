@@ -4,6 +4,7 @@ function ActiveStockOpnameSessionCard({
   onCreateSession,
   onCloseActiveSession,
   onOpenActiveSessionResult,
+  onOpenMatrixInput,
   onOpenSessionHistory,
 }) {
   return (
@@ -110,12 +111,21 @@ function ActiveStockOpnameSessionCard({
         </button>
 
         {activeStockOpnameSession && (
-          <button
-            onClick={onCloseActiveSession}
-            className="rounded-2xl bg-red-50 px-5 py-3 text-sm font-black text-red-600 transition hover:bg-red-100"
-          >
-            Akhiri Sesi Aktif
-          </button>
+          <>
+            <button
+              onClick={onOpenMatrixInput}
+              className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700"
+            >
+              Input Cepat SO
+            </button>
+
+            <button
+              onClick={onCloseActiveSession}
+              className="rounded-2xl bg-red-50 px-5 py-3 text-sm font-black text-red-600 transition hover:bg-red-100"
+            >
+              Akhiri Sesi Aktif
+            </button>
+          </>
         )}
 
         <button

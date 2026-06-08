@@ -376,6 +376,221 @@ export const updateTransaction = (transactionId, updatedData) => {
   }
 }
 
+
+export const requestVoidTransaction = ({
+  transactionId,
+  reason = "",
+  requestedBy = "Kasir",
+}) => {
+  try {
+    const transactions = getTransactions()
+
+    const targetTransaction = transactions.find((transaction) => {
+      return (
+        transaction.id === transactionId ||
+        transaction.invoiceNumber === transactionId
+      )
+    })
+
+    if (!targetTransaction) {
+      alert("Transaksi tidak ditemukan")
+      return transactions
+    }
+
+    if (targetTransaction.status === "Void") {
+      alert("Transaksi ini sudah di-void sebelumnya")
+      return transactions
+    }
+
+    if (
+      targetTransaction.status === "Void Pending" ||
+      targetTransaction.voidStatus === "pending"
+    ) {
+      alert("Transaksi ini sudah menunggu persetujuan void")
+      return transactions
+    }
+
+    const requestedAt = new Date().toISOString()
+
+    const updatedTransactions = transactions.map((transaction) => {
+      const isTargetTransaction =
+        transaction.id === transactionId ||
+        transaction.invoiceNumber === transactionId
+
+      if (!isTargetTransaction) return transaction
+
+      return {
+        ...transaction,
+        status: "Void Pending",
+        voidStatus: "pending",
+        voidReason: reason,
+        voidRequestedReason: reason,
+        voidRequestedAt: requestedAt,
+        voidRequestedBy: requestedBy,
+        voidApprovedAt: null,
+        voidApprovedBy: "",
+        voidRejectedAt: null,
+        voidRejectedBy: "",
+        voidRejectReason: "",
+        updatedAt: requestedAt,
+      }
+    })
+
+    localStorage.setItem(TRANSACTION_KEY, JSON.stringify(updatedTransactions))
+
+    return updatedTransactions
+  } catch (error) {
+    console.error("Gagal mengajukan void transaksi:", error)
+    return getTransactions()
+  }
+}
+
+export const approveVoidTransaction = ({
+  transactionId,
+  approvedBy = "Admin",
+  restoreStock = true,
+}) => {
+  try {
+    const transactions = getTransactions()
+
+    const targetTransaction = transactions.find((transaction) => {
+      return (
+        transaction.id === transactionId ||
+        transaction.invoiceNumber === transactionId
+      )
+    })
+
+    if (!targetTransaction) {
+      alert("Transaksi tidak ditemukan")
+      return transactions
+    }
+
+    if (targetTransaction.status === "Void") {
+      alert("Transaksi ini sudah di-void sebelumnya")
+      return transactions
+    }
+
+    if (
+      targetTransaction.status !== "Void Pending" &&
+      targetTransaction.voidStatus !== "pending"
+    ) {
+      alert("Transaksi ini belum memiliki pengajuan void")
+      return transactions
+    }
+
+    if (restoreStock && targetTransaction.stockRestored) {
+      alert("Stok transaksi ini sudah pernah dikembalikan")
+      return transactions
+    }
+
+    const approvedAt = new Date().toISOString()
+    const stockRestoredAt = restoreStock ? approvedAt : null
+
+    if (restoreStock) {
+      restoreStockFromTransaction(targetTransaction)
+    }
+
+    const updatedTransactions = transactions.map((transaction) => {
+      const isTargetTransaction =
+        transaction.id === transactionId ||
+        transaction.invoiceNumber === transactionId
+
+      if (!isTargetTransaction) return transaction
+
+      return {
+        ...transaction,
+        status: "Void",
+        voidStatus: "approved",
+        voidedAt: approvedAt,
+        voidedBy: approvedBy,
+        voidReason:
+          transaction.voidRequestedReason ||
+          transaction.voidReason ||
+          "Void disetujui",
+        voidApprovedAt: approvedAt,
+        voidApprovedBy: approvedBy,
+        stockRestored: restoreStock,
+        stockRestoredAt,
+        updatedAt: approvedAt,
+        items: transaction.items?.map((item) => ({
+          ...item,
+          status: "void",
+        })),
+      }
+    })
+
+    localStorage.setItem(TRANSACTION_KEY, JSON.stringify(updatedTransactions))
+
+    return updatedTransactions
+  } catch (error) {
+    console.error("Gagal menyetujui void transaksi:", error)
+    return getTransactions()
+  }
+}
+
+export const rejectVoidTransaction = ({
+  transactionId,
+  rejectedBy = "Admin",
+  rejectReason = "",
+}) => {
+  try {
+    const transactions = getTransactions()
+
+    const targetTransaction = transactions.find((transaction) => {
+      return (
+        transaction.id === transactionId ||
+        transaction.invoiceNumber === transactionId
+      )
+    })
+
+    if (!targetTransaction) {
+      alert("Transaksi tidak ditemukan")
+      return transactions
+    }
+
+    if (targetTransaction.status === "Void") {
+      alert("Transaksi ini sudah di-void sebelumnya")
+      return transactions
+    }
+
+    if (
+      targetTransaction.status !== "Void Pending" &&
+      targetTransaction.voidStatus !== "pending"
+    ) {
+      alert("Transaksi ini belum memiliki pengajuan void")
+      return transactions
+    }
+
+    const rejectedAt = new Date().toISOString()
+
+    const updatedTransactions = transactions.map((transaction) => {
+      const isTargetTransaction =
+        transaction.id === transactionId ||
+        transaction.invoiceNumber === transactionId
+
+      if (!isTargetTransaction) return transaction
+
+      return {
+        ...transaction,
+        status: "Lunas",
+        voidStatus: "rejected",
+        voidRejectedAt: rejectedAt,
+        voidRejectedBy: rejectedBy,
+        voidRejectReason: rejectReason,
+        updatedAt: rejectedAt,
+      }
+    })
+
+    localStorage.setItem(TRANSACTION_KEY, JSON.stringify(updatedTransactions))
+
+    return updatedTransactions
+  } catch (error) {
+    console.error("Gagal menolak void transaksi:", error)
+    return getTransactions()
+  }
+}
+
+
 export const voidTransaction = ({
   transactionId,
   reason = "",

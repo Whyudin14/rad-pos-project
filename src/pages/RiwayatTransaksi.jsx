@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react"
 import MainLayout from "../layouts/MainLayout"
 import {
+  approveVoidTransaction,
   getTransactions,
-  voidTransaction,
+  rejectVoidTransaction,
+  requestVoidTransaction,
 } from "../utils/transactionStorage"
 import PrintReceipt from "../components/PrintReceipt"
 
@@ -43,7 +45,44 @@ function RiwayatTransaksi() {
   }
 
   const isVoidTransaction = (transaction) => {
-    return transaction?.status === "Void"
+    return transaction?.status === "Void" || transaction?.voidStatus === "approved"
+  }
+
+  const isVoidPendingTransaction = (transaction) => {
+    return (
+      transaction?.status === "Void Pending" ||
+      transaction?.voidStatus === "pending"
+    )
+  }
+
+  const isVoidRejectedTransaction = (transaction) => {
+    return transaction?.voidStatus === "rejected"
+  }
+
+  const isTransactionLocked = (transaction) => {
+    return isVoidTransaction(transaction) || isVoidPendingTransaction(transaction)
+  }
+
+  const getTransactionStatus = (transaction) => {
+    if (isVoidTransaction(transaction)) return "Void"
+    if (isVoidPendingTransaction(transaction)) return "Menunggu Void"
+    return transaction?.status || "Lunas"
+  }
+
+  const getStatusBadgeClass = (transaction) => {
+    if (isVoidTransaction(transaction)) {
+      return "bg-red-100 text-red-600"
+    }
+
+    if (isVoidPendingTransaction(transaction)) {
+      return "bg-amber-100 text-amber-700"
+    }
+
+    if (isVoidRejectedTransaction(transaction)) {
+      return "bg-blue-50 text-blue-600"
+    }
+
+    return "bg-emerald-50 text-emerald-600"
   }
 
   const getTotalItems = (transaction) => {
@@ -56,22 +95,55 @@ function RiwayatTransaksi() {
     )
   }
 
+  const transactionSummary = useMemo(() => {
+    return transactions.reduce(
+      (summary, transaction) => {
+        if (isVoidTransaction(transaction)) {
+          return {
+            ...summary,
+            void: summary.void + 1,
+          }
+        }
+
+        if (isVoidPendingTransaction(transaction)) {
+          return {
+            ...summary,
+            pending: summary.pending + 1,
+          }
+        }
+
+        return {
+          ...summary,
+          paid: summary.paid + 1,
+        }
+      },
+      {
+        total: transactions.length,
+        paid: 0,
+        pending: 0,
+        void: 0,
+      }
+    )
+  }, [transactions])
+
   const filteredTransactions = useMemo(() => {
     const keyword = searchKeyword.trim().toLowerCase()
 
     return transactions.filter((transaction) => {
       const invoice = String(transaction.invoiceNumber || "").toLowerCase()
       const paymentMethod = transaction.paymentMethod || ""
-      const status = isVoidTransaction(transaction) ? "Void" : "Lunas"
+      const status = getTransactionStatus(transaction)
 
-      const transactionDate = transaction.date
-        ? new Date(transaction.date)
-        : null
+      const transactionDate = transaction.date ? new Date(transaction.date) : null
 
       const matchKeyword = !keyword || invoice.includes(keyword)
 
       const matchStatus =
-        statusFilter === "Semua" || status === statusFilter
+        statusFilter === "Semua" ||
+        status === statusFilter ||
+        (statusFilter === "Lunas" &&
+          !isVoidTransaction(transaction) &&
+          !isVoidPendingTransaction(transaction))
 
       const matchPayment =
         paymentFilter === "Semua" || paymentMethod === paymentFilter
@@ -107,7 +179,19 @@ function RiwayatTransaksi() {
     setEndDate("")
   }
 
-  const handleVoidTransaction = (transaction) => {
+  const syncSelectedTransaction = (updatedTransactions, oldTransaction) => {
+    const updatedSelectedTransaction = updatedTransactions.find((item) => {
+      return (
+        item.id === oldTransaction.id ||
+        item.invoiceNumber === oldTransaction.invoiceNumber
+      )
+    })
+
+    setTransactions(updatedTransactions)
+    setSelectedTransaction(updatedSelectedTransaction || null)
+  }
+
+  const handleRequestVoidTransaction = (transaction) => {
     if (!transaction) return
 
     if (isVoidTransaction(transaction)) {
@@ -115,37 +199,87 @@ function RiwayatTransaksi() {
       return
     }
 
+    if (isVoidPendingTransaction(transaction)) {
+      alert("Transaksi ini sudah menunggu persetujuan void.")
+      return
+    }
+
     const reason = window.prompt(
-      `Alasan void transaksi ${transaction.invoiceNumber}:`
+      `Alasan ajukan void transaksi ${transaction.invoiceNumber}:`
     )
 
     if (!reason || !reason.trim()) {
-      alert("Void dibatalkan. Alasan wajib diisi.")
+      alert("Pengajuan void dibatalkan. Alasan wajib diisi.")
       return
     }
 
     const isConfirmed = window.confirm(
-      `Yakin mau void transaksi ${transaction.invoiceNumber}?\n\nTransaksi tidak akan dihapus, hanya ditandai sebagai Void dan stok akan dikembalikan.`
+      `Ajukan void transaksi ${transaction.invoiceNumber}?\n\nStok belum dikembalikan. Stok baru kembali setelah Admin/Owner menyetujui pengajuan void ini.`
     )
 
     if (!isConfirmed) return
 
-    const updatedTransactions = voidTransaction({
+    const updatedTransactions = requestVoidTransaction({
       transactionId: transaction.id || transaction.invoiceNumber,
       reason: reason.trim(),
-      voidedBy: "Admin",
+      requestedBy: "Kasir",
     })
 
-    setTransactions(updatedTransactions)
+    syncSelectedTransaction(updatedTransactions, transaction)
+  }
 
-    const updatedSelectedTransaction = updatedTransactions.find((item) => {
-      return (
-        item.id === transaction.id ||
-        item.invoiceNumber === transaction.invoiceNumber
-      )
+  const handleApproveVoidTransaction = (transaction) => {
+    if (!transaction) return
+
+    if (!isVoidPendingTransaction(transaction)) {
+      alert("Transaksi ini belum menunggu persetujuan void.")
+      return
+    }
+
+    const isConfirmed = window.confirm(
+      `Setujui void transaksi ${transaction.invoiceNumber}?\n\nSetelah disetujui, transaksi menjadi Void dan stok barang dari transaksi ini akan dikembalikan otomatis.`
+    )
+
+    if (!isConfirmed) return
+
+    const updatedTransactions = approveVoidTransaction({
+      transactionId: transaction.id || transaction.invoiceNumber,
+      approvedBy: "Admin/Owner",
     })
 
-    setSelectedTransaction(updatedSelectedTransaction || null)
+    syncSelectedTransaction(updatedTransactions, transaction)
+  }
+
+  const handleRejectVoidTransaction = (transaction) => {
+    if (!transaction) return
+
+    if (!isVoidPendingTransaction(transaction)) {
+      alert("Transaksi ini belum menunggu persetujuan void.")
+      return
+    }
+
+    const rejectReason = window.prompt(
+      `Alasan menolak void transaksi ${transaction.invoiceNumber}:`
+    )
+
+    if (!rejectReason || !rejectReason.trim()) {
+      alert("Tolak void dibatalkan. Alasan wajib diisi.")
+      return
+    }
+
+    const isConfirmed = window.confirm(
+      `Tolak pengajuan void transaksi ${transaction.invoiceNumber}?\n\nTransaksi tetap Lunas dan stok tidak berubah.`
+    )
+
+    if (!isConfirmed) return
+
+    const updatedTransactions = rejectVoidTransaction({
+      transactionId: transaction.id || transaction.invoiceNumber,
+      rejectedBy: "Admin/Owner",
+      rejectReason: rejectReason.trim(),
+    })
+
+    syncSelectedTransaction(updatedTransactions, transaction)
   }
 
   const splitProductNameAndColor = (rawName = "") => {
@@ -208,6 +342,11 @@ function RiwayatTransaksi() {
       return
     }
 
+    if (isVoidPendingTransaction(transaction)) {
+      alert("Transaksi yang sedang menunggu void sebaiknya tidak dicetak ulang.")
+      return
+    }
+
     setSelectedTransaction(null)
     setPrintTransaction(transaction)
 
@@ -241,71 +380,59 @@ function RiwayatTransaksi() {
                 Riwayat Transaksi
               </h1>
               <p className="mt-1 text-sm font-medium text-slate-500">
-                Pantau transaksi penjualan, cetak ulang struk, dan lakukan void
-                transaksi jika terjadi kesalahan input.
+                Pantau transaksi, cetak ulang struk, ajukan void, dan proses
+                persetujuan void tanpa langsung mengembalikan stok.
               </p>
             </div>
 
-            <div className="grid w-full gap-3 sm:grid-cols-3 lg:w-auto">
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Total Transaksi
+            <div className="grid w-full gap-3 sm:grid-cols-4 lg:w-auto">
+              <SummaryCard
+                label="Total Transaksi"
+                value={transactionSummary.total}
+                color="slate"
+              />
+
+              <SummaryCard
+                label="Lunas"
+                value={transactionSummary.paid}
+                color="emerald"
+              />
+
+              <SummaryCard
+                label="Menunggu Void"
+                value={transactionSummary.pending}
+                color="amber"
+              />
+
+              <SummaryCard
+                label="Void"
+                value={transactionSummary.void}
+                color="red"
+              />
+            </div>
+          </div>
+
+          <div className="mb-5 rounded-[26px] border border-amber-100 bg-amber-50 p-4 shadow-sm">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm font-black text-amber-800">
+                  Alur void sekarang pakai persetujuan.
                 </p>
-                <p className="mt-1 text-xl font-black text-slate-900">
-                  {transactions.length}
+                <p className="mt-1 text-xs font-semibold leading-relaxed text-amber-700">
+                  Kasir hanya mengajukan void. Stok tidak langsung kembali.
+                  Stok baru kembali setelah Admin/Owner menyetujui pengajuan
+                  void.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Lunas
-                </p>
-                <p className="mt-1 text-xl font-black text-emerald-600">
-                  {
-                    transactions.filter(
-                      (transaction) => !isVoidTransaction(transaction)
-                    ).length
-                  }
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Void
-                </p>
-                <p className="mt-1 text-xl font-black text-red-600">
-                  {
-                    transactions.filter((transaction) =>
-                      isVoidTransaction(transaction)
-                    ).length
-                  }
-                </p>
+              <div className="rounded-2xl bg-white px-4 py-2 text-xs font-black text-amber-700 shadow-sm">
+                Pending void: {transactionSummary.pending}
               </div>
             </div>
           </div>
 
-          {/* FILTER */}
-          <div className="mb-5 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
-              <div>
-                <p className="text-sm font-black text-slate-900">
-                  Filter Transaksi
-                </p>
-                <p className="text-xs font-medium text-slate-400">
-                  Cari invoice, status, metode pembayaran, atau rentang tanggal.
-                </p>
-              </div>
-
-              <p className="text-xs font-bold text-slate-500">
-                Menampilkan{" "}
-                <span className="text-blue-600">
-                  {filteredTransactions.length}
-                </span>{" "}
-                dari {transactions.length} transaksi
-              </p>
-            </div>
-
-            <div className="grid gap-3 lg:grid-cols-[1.5fr_0.8fr_0.9fr_0.9fr_0.9fr_auto]">
+          <div className="mb-5 rounded-[26px] border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="grid gap-3 lg:grid-cols-[1.3fr_0.8fr_0.8fr_0.8fr_0.8fr_auto]">
               <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
                   Cari Invoice
@@ -314,8 +441,8 @@ function RiwayatTransaksi() {
                   type="text"
                   value={searchKeyword}
                   onChange={(event) => setSearchKeyword(event.target.value)}
-                  placeholder="Contoh: RAD-20260530"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white"
+                  placeholder="Contoh: RAD-20260527"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none transition focus:border-blue-400 focus:bg-white"
                 />
               </div>
 
@@ -330,6 +457,7 @@ function RiwayatTransaksi() {
                 >
                   <option value="Semua">Semua</option>
                   <option value="Lunas">Lunas</option>
+                  <option value="Menunggu Void">Menunggu Void</option>
                   <option value="Void">Void</option>
                 </select>
               </div>
@@ -425,12 +553,18 @@ function RiwayatTransaksi() {
               <div className="divide-y divide-slate-100">
                 {filteredTransactions.map((transaction, index) => {
                   const isVoid = isVoidTransaction(transaction)
+                  const isPending = isVoidPendingTransaction(transaction)
+                  const isLocked = isTransactionLocked(transaction)
 
                   return (
                     <div
                       key={transaction.id || transaction.invoiceNumber || index}
                       className={`grid gap-4 px-5 py-4 text-sm xl:grid-cols-[1.45fr_1.15fr_1fr_0.8fr_0.65fr_1.1fr] xl:items-center ${
-                        isVoid ? "bg-red-50/50" : "bg-white"
+                        isVoid
+                          ? "bg-red-50/50"
+                          : isPending
+                          ? "bg-amber-50/60"
+                          : "bg-white"
                       }`}
                     >
                       <div className="min-w-0">
@@ -446,18 +580,22 @@ function RiwayatTransaksi() {
 
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           <span
-                            className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${
-                              isVoid
-                                ? "bg-red-100 text-red-600"
-                                : "bg-emerald-50 text-emerald-600"
-                            }`}
+                            className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${getStatusBadgeClass(
+                              transaction
+                            )}`}
                           >
-                            {transaction.status || "Lunas"}
+                            {getTransactionStatus(transaction)}
                           </span>
 
                           {transaction.stockRestored && (
                             <span className="w-fit rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-blue-600">
                               Stok kembali
+                            </span>
+                          )}
+
+                          {isVoidRejectedTransaction(transaction) && (
+                            <span className="w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-slate-500">
+                              Void pernah ditolak
                             </span>
                           )}
 
@@ -491,7 +629,7 @@ function RiwayatTransaksi() {
                         {getTotalItems(transaction)} item
                       </div>
 
-                      <div className="flex justify-start gap-2 xl:justify-end">
+                      <div className="flex flex-wrap justify-start gap-2 xl:justify-end">
                         <button
                           onClick={() => setSelectedTransaction(transaction)}
                           className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 transition hover:bg-slate-50"
@@ -501,7 +639,7 @@ function RiwayatTransaksi() {
 
                         <button
                           onClick={() => handlePrintReceipt(transaction)}
-                          disabled={isVoid}
+                          disabled={isLocked}
                           className="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
                         >
                           Cetak
@@ -516,7 +654,7 @@ function RiwayatTransaksi() {
 
           {selectedTransaction && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-              <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[26px] bg-white p-5 shadow-2xl">
+              <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[26px] bg-white p-5 shadow-2xl">
                 <div className="mb-4 flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-black uppercase tracking-wide text-blue-600">
@@ -542,6 +680,8 @@ function RiwayatTransaksi() {
                   className={`mb-4 rounded-[20px] p-4 text-sm ${
                     isVoidTransaction(selectedTransaction)
                       ? "bg-red-50"
+                      : isVoidPendingTransaction(selectedTransaction)
+                      ? "bg-amber-50"
                       : "bg-slate-50"
                   }`}
                 >
@@ -563,10 +703,12 @@ function RiwayatTransaksi() {
                         className={`mt-1 font-black ${
                           isVoidTransaction(selectedTransaction)
                             ? "text-red-600"
+                            : isVoidPendingTransaction(selectedTransaction)
+                            ? "text-amber-700"
                             : "text-emerald-600"
                         }`}
                       >
-                        {selectedTransaction.status || "Lunas"}
+                        {getTransactionStatus(selectedTransaction)}
                       </p>
                     </div>
 
@@ -580,46 +722,83 @@ function RiwayatTransaksi() {
                     </div>
                   </div>
 
-                  {isVoidTransaction(selectedTransaction) && (
-                    <div className="mt-4 rounded-2xl border border-red-100 bg-white/70 p-3">
-                      <div className="mb-3">
-                        <p className="text-xs font-bold uppercase tracking-wide text-red-400">
-                          Alasan Void
-                        </p>
-                        <p className="mt-1 whitespace-pre-wrap break-words text-sm font-bold leading-relaxed text-red-600">
-                          {selectedTransaction.voidReason || "-"}
-                        </p>
-                      </div>
-
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div>
-                          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                            Waktu Void
-                          </p>
-                          <p className="mt-1 font-bold text-slate-800">
-                            {selectedTransaction.voidedAt
-                              ? formatDate(selectedTransaction.voidedAt)
-                              : "-"}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                            Void Oleh
-                          </p>
-                          <p className="mt-1 font-bold text-slate-800">
-                            {selectedTransaction.voidedBy || "-"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {selectedTransaction.stockRestored && (
-                        <p className="mt-3 w-fit rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-600">
-                          Stok otomatis sudah dikembalikan
-                        </p>
-                      )}
-                    </div>
+                  {isVoidPendingTransaction(selectedTransaction) && (
+                    <VoidInfoBox
+                      color="amber"
+                      title="Pengajuan Void Menunggu Persetujuan"
+                      reason={
+                        selectedTransaction.voidRequestedReason ||
+                        selectedTransaction.voidReason
+                      }
+                      rows={[
+                        {
+                          label: "Diajukan Pada",
+                          value: selectedTransaction.voidRequestedAt
+                            ? formatDate(selectedTransaction.voidRequestedAt)
+                            : "-",
+                        },
+                        {
+                          label: "Diajukan Oleh",
+                          value: selectedTransaction.voidRequestedBy || "-",
+                        },
+                      ]}
+                      footer="Stok belum dikembalikan. Transaksi masih dianggap aktif sampai Admin/Owner menyetujui void."
+                    />
                   )}
+
+                  {isVoidTransaction(selectedTransaction) && (
+                    <VoidInfoBox
+                      color="red"
+                      title="Alasan Void"
+                      reason={selectedTransaction.voidReason || "-"}
+                      rows={[
+                        {
+                          label: "Waktu Void",
+                          value: selectedTransaction.voidedAt
+                            ? formatDate(selectedTransaction.voidedAt)
+                            : "-",
+                        },
+                        {
+                          label: "Void Oleh",
+                          value: selectedTransaction.voidedBy || "-",
+                        },
+                      ]}
+                      footer={
+                        selectedTransaction.stockRestored
+                          ? "Stok otomatis sudah dikembalikan"
+                          : "Stok tidak dikembalikan otomatis"
+                      }
+                    />
+                  )}
+
+                  {isVoidRejectedTransaction(selectedTransaction) &&
+                    !isVoidPendingTransaction(selectedTransaction) &&
+                    !isVoidTransaction(selectedTransaction) && (
+                      <VoidInfoBox
+                        color="blue"
+                        title="Riwayat Pengajuan Void Ditolak"
+                        reason={
+                          selectedTransaction.voidRequestedReason ||
+                          selectedTransaction.voidReason ||
+                          "-"
+                        }
+                        rows={[
+                          {
+                            label: "Ditolak Pada",
+                            value: selectedTransaction.voidRejectedAt
+                              ? formatDate(selectedTransaction.voidRejectedAt)
+                              : "-",
+                          },
+                          {
+                            label: "Ditolak Oleh",
+                            value: selectedTransaction.voidRejectedBy || "-",
+                          },
+                        ]}
+                        footer={`Alasan tolak: ${
+                          selectedTransaction.voidRejectReason || "-"
+                        }`}
+                      />
+                    )}
                 </div>
 
                 <div className="space-y-3">
@@ -650,6 +829,8 @@ function RiwayatTransaksi() {
                         className={`rounded-[20px] border p-4 ${
                           isVoidTransaction(selectedTransaction)
                             ? "border-red-100 bg-red-50/40"
+                            : isVoidPendingTransaction(selectedTransaction)
+                            ? "border-amber-100 bg-amber-50/40"
                             : "border-slate-200 bg-white"
                         }`}
                       >
@@ -758,30 +939,65 @@ function RiwayatTransaksi() {
                   </div>
                 </div>
 
-                <div className="mt-5 grid grid-cols-3 gap-3">
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
                   <button
                     onClick={() => handlePrintReceipt(selectedTransaction)}
-                    disabled={isVoidTransaction(selectedTransaction)}
+                    disabled={isTransactionLocked(selectedTransaction)}
                     className="rounded-2xl bg-slate-900 py-3 text-sm font-black text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
                   >
                     Cetak
                   </button>
 
-                  <button
-                    onClick={() => handleVoidTransaction(selectedTransaction)}
-                    disabled={isVoidTransaction(selectedTransaction)}
-                    className="rounded-2xl bg-red-600 py-3 text-sm font-black text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-100 disabled:text-red-300"
-                  >
-                    Void
-                  </button>
+                  {isVoidPendingTransaction(selectedTransaction) ? (
+                    <>
+                      <button
+                        onClick={() =>
+                          handleApproveVoidTransaction(selectedTransaction)
+                        }
+                        className="rounded-2xl bg-emerald-600 py-3 text-sm font-black text-white hover:bg-emerald-700"
+                      >
+                        Setujui Void
+                      </button>
 
+                      <button
+                        onClick={() =>
+                          handleRejectVoidTransaction(selectedTransaction)
+                        }
+                        className="rounded-2xl bg-red-600 py-3 text-sm font-black text-white hover:bg-red-700"
+                      >
+                        Tolak Void
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() =>
+                          handleRequestVoidTransaction(selectedTransaction)
+                        }
+                        disabled={isTransactionLocked(selectedTransaction)}
+                        className="rounded-2xl bg-amber-500 py-3 text-sm font-black text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-amber-100 disabled:text-amber-300"
+                      >
+                        Ajukan Void
+                      </button>
+
+                      <button
+                        onClick={() => setSelectedTransaction(null)}
+                        className="rounded-2xl border border-slate-200 py-3 text-sm font-black text-slate-700 hover:bg-slate-50"
+                      >
+                        Tutup
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {isVoidPendingTransaction(selectedTransaction) && (
                   <button
                     onClick={() => setSelectedTransaction(null)}
-                    className="rounded-2xl border border-slate-200 py-3 text-sm font-black text-slate-700 hover:bg-slate-50"
+                    className="mt-3 w-full rounded-2xl border border-slate-200 py-3 text-sm font-black text-slate-700 hover:bg-slate-50"
                   >
                     Tutup
                   </button>
-                </div>
+                )}
               </div>
             </div>
           )}
@@ -796,6 +1012,87 @@ function RiwayatTransaksi() {
         )}
       </div>
     </MainLayout>
+  )
+}
+
+function SummaryCard({ label, value, color = "slate" }) {
+  const colorClass = {
+    slate: "text-slate-900",
+    emerald: "text-emerald-600",
+    amber: "text-amber-600",
+    red: "text-red-600",
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p className={`mt-1 text-xl font-black ${colorClass[color]}`}>
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function VoidInfoBox({ color = "red", title, reason, rows = [], footer }) {
+  const colorClass = {
+    red: {
+      wrapper: "border-red-100 bg-white/70",
+      title: "text-red-400",
+      reason: "text-red-600",
+      footer: "bg-blue-50 text-blue-600",
+    },
+    amber: {
+      wrapper: "border-amber-100 bg-white/70",
+      title: "text-amber-500",
+      reason: "text-amber-700",
+      footer: "bg-amber-100 text-amber-700",
+    },
+    blue: {
+      wrapper: "border-blue-100 bg-white/70",
+      title: "text-blue-500",
+      reason: "text-blue-700",
+      footer: "bg-blue-50 text-blue-600",
+    },
+  }
+
+  const selectedColor = colorClass[color] || colorClass.red
+
+  return (
+    <div className={`mt-4 rounded-2xl border p-3 ${selectedColor.wrapper}`}>
+      <div className="mb-3">
+        <p
+          className={`text-xs font-bold uppercase tracking-wide ${selectedColor.title}`}
+        >
+          {title}
+        </p>
+        <p
+          className={`mt-1 whitespace-pre-wrap break-words text-sm font-bold leading-relaxed ${selectedColor.reason}`}
+        >
+          {reason || "-"}
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {rows.map((row) => (
+          <div key={row.label}>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+              {row.label}
+            </p>
+            <p className="mt-1 font-bold text-slate-800">{row.value || "-"}</p>
+          </div>
+        ))}
+      </div>
+
+      {footer && (
+        <p
+          className={`mt-3 w-fit rounded-full px-3 py-1 text-xs font-black ${selectedColor.footer}`}
+        >
+          {footer}
+        </p>
+      )}
+    </div>
   )
 }
 
